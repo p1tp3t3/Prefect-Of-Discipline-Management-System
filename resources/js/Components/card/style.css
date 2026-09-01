@@ -1,0 +1,19 @@
+.option-panel {
+    position: anchor(option-panel-anchor) absolute;
+    inset-block-start: anchor(option-panel-anchor bottom) 5px; /* Position below */
+    inset-inline-start: anchor(option-panel-anchor left); /* Align left */
+    
+    /* Prevent overflow */
+    contain-intrinsic-size: auto;
+    max-width: 15rem;
+    background: white;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    border-radius: 6px;
+    padding: 10px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.option-panel.show {
+    opacity: 1;
+}

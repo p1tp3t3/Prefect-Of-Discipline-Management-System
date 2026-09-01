@@ -1,0 +1,92 @@
+.frm-inpt-brdr {
+    display: grid;
+}
+.frm-inpt-brdr label {
+    font-size: 9px;
+    margin-top: -18px;
+    transition: 0.2s;
+}
+.frm-inpt-brdr textarea ~ label {
+    margin-top: 5px;
+}
+.frm-inpt-brdr input,
+.frm-inpt-brdr textarea {
+    border: none;
+    padding: 0;
+    width: 100%;
+    position: relative;
+    background: none;
+    top: 6px;
+    transition: 0.2s;
+}
+.frm-inpt-brdr textarea {
+    top: 16px;
+}
+.frm-inpt-brdr input:placeholder-shown ~ label,
+.frm-inpt-brdr textarea:placeholder-shown ~ label {
+    margin-top: 0;
+    font-size: 12px;
+}
+.frm-inpt-brdr textarea:placeholder-shown ~ label {
+    margin-top: 10px;
+}
+.frm-inpt-brdr input:placeholder-shown,
+.frm-inpt-brdr textarea:placeholder-shown {
+    font-size: 12px;
+    top: 0;
+}
+.frm-inpt-brdr input:focus,
+.frm-inpt-brdr textarea:focus {
+    outline: none;
+    box-shadow: 0 0 0 0;
+    top: 6px;
+}
+.frm-inpt-brdr textarea:focus {
+    top: 16px;
+}
+.frm-inpt-brdr input:focus ~ label,
+.frm-inpt-brdr textarea:focus ~ label {
+    margin-top: -18px;
+    font-size: 9px;
+}
+.frm-inpt-brdr textarea:focus ~ label {
+    margin-top: 5px;
+}
+select:focus {
+    outline: none;
+    box-shadow: 0 0 0 0;
+    border-color: gray;
+}
+
+/* From Uiverse.io by alexruix */ 
+.input-group-2 {
+    position: relative;
+}
+
+.input-2 {
+    border-radius: 1rem;
+    background: none;
+    padding: 1rem;
+    font-size: 1rem;
+    transition: border 150ms cubic-bezier(0.4,0,0.2,1);
+}
+
+.user-label-2 {
+    position: absolute;
+    left: 15px;
+    pointer-events: none;
+    transform: translateY(1rem);
+    transition: 150ms cubic-bezier(0.4,0,0.2,1);
+}
+
+.input-group-2 input:focus, .input-group-2 input:valid {
+    outline: none;
+    border: 1.5px solid #1a73e8;
+}
+
+.input-2:focus ~ .user-label-2, .input-group-2 input:valid ~ .user-label-2 {
+    transform: translateY(-50%) scale(0.8);
+    background-color: white;
+    padding: 0 .2em;
+    color: #2196f3;
+}

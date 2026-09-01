@@ -1,0 +1,9 @@
+aside .dropdown::-webkit-scrollbar  {
+    background-color: rgb(0, 1, 12);
+    border-radius: 10rem;
+    width: 10px;
+}
+aside .dropdown::-webkit-scrollbar-thumb {
+    background-color: rgb(36, 36, 201);
+    border-radius: 10rem;
+}

@@ -1,0 +1,158 @@
+import { DataGrid } from "@mui/x-data-grid"
+import Box from "@mui/material/Box"
+import { useContext, useMemo } from "react"
+import AuthContext from "@/context-provider/auth-provider"
+
+import { getProfilePic, readableDate, readableTime, toTitleCase } from "../../others/function"
+import ProfilePic from "../other/profile-pic"
+import ActionBtn from "../button/action-btn"
+import CircleReload from "../reload/circle-reload"
+
+const GatePassRequestList = (props) => {
+    const { usr } = useContext(AuthContext)
+
+    const rows = useMemo(() => {
+        if (!props.list) return []
+        return props.list.map((e, i) => ({
+            i: i + 1,
+            id: e.id,
+            user_id: e.user?.id_number,
+            name: (e.user.profile?.first_name ?? '') + ' ' + (e.user.profile?.middle_name ?? '') + " " + (e.user.profile?.last_name ?? '') + ' ' + e.user.role,
+            user: e.user,
+            created_at: e.created_at,
+        }))
+    }, [props.list])
+
+    const columns = useMemo(() => {
+        return [
+            {
+                field: 'i',
+                headerName: '#'
+            },
+            {
+                field: 'user_id',
+                headerName: 'Student I.D'
+            },
+            {
+                field: "name",
+                headerName: "Student",
+                flex: 1.2,
+                sortable: false,
+                renderCell: (params) => {
+                    const u = params.row.user
+                    return (
+                        <div className="flex items-center gap-3 h-full">
+                            <ProfilePic size={2.5} src={getProfilePic(u?.profile?.profile_picture, u?.profile?.sex)} />
+                            <div className="flex flex-col justify-center leading-tight">
+                                <div className="text-[0.9em] font-semibold">
+                                    {u ? `${u.profile?.first_name ?? ""} ${u.profile?.last_name ?? ""}` : "-"}
+                                </div>
+                                <div className="text-[0.8em] text-gray-600">
+                                    {u?.role ? toTitleCase(u.role) : "-"}
+                                </div>
+                            </div>
+                        </div>
+                    )
+                },
+            },
+            {
+                field: "created_at",
+                headerName: "Request Since",
+                flex: 1,
+                renderCell: (params) => (
+                    <span className="text-[0.85em]">
+                        {params.value ? `${readableDate(params.value)} (${readableTime(params.value)})` : "-"}
+                    </span>
+                ),
+            },
+            {
+                field: "actions",
+                type: "actions",
+                headerName: "Action",
+                width: 280,
+                align: 'start',
+                headerAlign: 'start',
+                renderCell: (params) => (
+                    <div className="flex gap-2 items-center h-full">
+                        <ActionBtn
+                            className="bg-blue-700 hover:bg-blue-800"
+                            onClick={() => props.view(params.row.id)}
+                        >
+                            View
+                        </ActionBtn>
+
+                        {usr?.role === "sub_admin" && (
+                            <>
+                                <ActionBtn
+                                    className="bg-green-500 hover:bg-green-600"
+                                    onClick={() => props.events(params.row.id, "confirm")}
+                                >
+                                    Accept
+                                </ActionBtn>
+                                <ActionBtn
+                                    className="bg-red-500 hover:bg-red-600"
+                                    onClick={() => props.events(params.row.id, "cancel")}
+                                >
+                                    Reject
+                                </ActionBtn>
+                            </>
+                        )}
+                    </div>
+                ),
+            },
+        ]
+    }, [usr?.role, props])
+
+    // Loading state (props.list === null)
+    if (props.list === null) {
+        return (
+            <div className="w-full px-5 py-10 bg-white rounded-md shadow-black/20 shadow-sm flex justify-center">
+                <CircleReload size={3} />
+            </div>
+        )
+    }
+
+    // Empty state
+    if (props.list?.length === 0) {
+        return (
+            <div className="w-full px-5 py-10 bg-white rounded-md shadow-black/20 shadow-sm">
+                <div className="flex justify-center items-center w-full">
+                    <div className="grid place-items-center text-gray-600">
+                        <div className="text-[4em]">
+                            <i className="fa-solid fa-file"></i>
+                        </div>
+                        <div>
+                            <b>No Gate Pass Request Yet</b>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
+    return (
+        <Box
+            sx={{
+                width: "100%",
+                backgroundColor: "#fff",
+                borderRadius: 2,
+                boxShadow: 2,
+                p: 2,
+            }}
+        >
+            <DataGrid
+                rows={rows}
+                columns={columns}
+                pageSizeOptions={[5, 10, 20]}
+                initialState={{
+                    pagination: { paginationModel: { pageSize: 10, page: 0 } },
+                }}
+                pagination
+                disableRowSelectionOnClick
+                showToolbar
+            />
+        </Box>
+    )
+}
+
+export default GatePassRequestList

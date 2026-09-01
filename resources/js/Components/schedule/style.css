@@ -1,0 +1,29 @@
+/* Container ensures the grid doesn't overflow */
+.calendar .overflow-hidden {
+    position: relative;
+    height: 16rem; /* Match grid height */
+  }
+  
+  .calendar .grid {
+    position: absolute;
+    width: 100%;
+    top: 0;
+    transition: transform 0.3s ease-in-out;
+  }
+  
+  /* Slide left animation */
+  .calendar .slide-left {
+    transform: translateX(-100%);
+  }
+  
+  /* Slide right animation */
+  .calendar .slide-right {
+    transform: translateX(100%);
+  }
+
+  @keyframes popIn {
+  0% { opacity: 0; transform: scale(0.95); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+  

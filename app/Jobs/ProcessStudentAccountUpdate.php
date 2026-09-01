@@ -1,0 +1,64 @@
+<?php
+
+namespace App\Jobs;
+
+use App\Http\Controllers\Modules\Account\RegisteredUserController;
+use App\Models\Enrollment;
+use App\Models\User;
+use Exception;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+
+class ProcessStudentAccountUpdate implements ShouldQueue
+{
+    use Queueable;
+
+    /**
+     * Create a new job instance.
+     */
+    protected $csvPath, $schoolYear;
+    public function __construct($csvPath, $schoolYear)
+    {
+        $this->csvPath = $csvPath;
+        $this->schoolYear = $schoolYear;
+    }
+
+    /**
+     * Execute the job.
+     */
+    public function handle(): void
+    {
+        DB::beginTransaction();
+        try {
+            $register = new RegisteredUserController();
+            $csvArr = $register->getUserDf($this->csvPath);
+            $enrolledIds = collect($csvArr)->pluck('student_id')->map(fn($id) => strtolower($id))->all();
+
+            $students = User::where('role', 'student')->get(['id', 'id_number']);
+
+            foreach ($students as $student) {
+                $isEnrolled = in_array(strtolower($student->id_number ?? ''), $enrolledIds, true);
+                self::activateStudent($student, $isEnrolled);
+            }
+            DB::commit();
+        }catch(Exception $x) {
+            DB::rollBack();
+            Log::error('ProcessStudentAccountUpdate failed: ' . $x->getMessage());
+        }
+    }
+
+    private function activateStudent(User $student, $activate) {
+        $student->update([
+            'activate' => $activate
+        ]);
+
+        Enrollment::where('student_id', $student->id)
+            ->where('school_year', $this->schoolYear)
+            ->update([
+                'status' => $activate ? 'enrolled' : 'dropped',
+                'dropped_at' => $activate ? null : now(),
+            ]);
+    }
+}

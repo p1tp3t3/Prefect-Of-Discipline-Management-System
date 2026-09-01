@@ -1,0 +1,5 @@
+from model_training.complaint_context_analyzer import ComplaintContextAnalyzer
+from model_training.early_intervention_violation_predictor import EarlyInterventionViolationPredictor
+
+model_eivp = EarlyInterventionViolationPredictor('student_violations')
+model_cca = ComplaintContextAnalyzer()

@@ -1,0 +1,87 @@
+.frm {
+    animation: fadeIn 0.5s ease-in-out;
+}
+.notif {
+    transition: all;
+    animation: notif 2s infinite;
+}
+
+.register-tab {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+}
+.register-tab .tabs {
+	display: flex;
+	position: relative;
+	box-shadow: 0 0 1px 0 rgba(#185ee0, 0.15), 0 6px 12px 0 rgba(#185ee0, 0.15);
+	width: 100%;
+}
+
+.register-tab [type="radio"] {
+	display: none;
+}
+
+.register-tab .tab {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 45px;
+	width: 100%;
+	font-size: 0.9em;
+	font-weight: 500;
+	cursor: pointer;
+	transition: color 0.15s ease-in;
+}
+.register-tab .active {
+    transition: 0.1s;
+    background-color: #185ee013;
+    color: #185ee0;
+    border-bottom: 2px solid #185ee0;
+}
+.register-tab .hover:hover {
+  transition: 0.1s;
+  background-color: #185ee013;
+  color: #185ee0;
+  border-bottom: 2px solid #185ee0;
+}
+.register-tab .glider {
+	position: absolute;
+	display: flex;
+	height: 54px;
+	width: 140px;
+	background-color: #e6eef9;
+	z-index: 1;
+	border-radius: 99px;
+	transition: 0.25s ease-out;
+}
+@keyframes notif {
+  0% {
+    transform: rotate(-15deg);
+  }
+  50% {
+    transform: rotate(15deg);
+  }
+  100% {
+      transform: rotate(-15deg);
+  }
+}  
+@keyframes fadeIn {
+    0% {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0 }
+    to { opacity: 1 }
+}
+.animate-fadeIn {
+    animation: fadeIn 0.3s ease-in-out forwards;
+}

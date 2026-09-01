@@ -1,0 +1,118 @@
+import UpModal from "../up-modal"
+import CheckBoxButton from "../../input/checkbox"
+import FormTextfield from "@/Components/input/form-input"
+import FormButton from "../../button/button"
+import { change, sendData, showOutputModal, showWarningModal } from "../../../others/function"
+import { useState } from "react"
+import RadioButton from "@/Components/input/radio"
+
+const RequestGatePassModal = (props) => {
+    
+    const [data, setData] = useState({
+        user_id: props.user_id,
+        other_reason: "",
+    });
+    const [err, setErr] = useState('')
+
+    const handleChange = e => {
+        change(e, setData)
+    }
+    const handleCheck = (e) => {
+        const form = e.target.form || e.currentTarget.closest("form") || document;
+        const checked = form.querySelectorAll('input[name="reason[]"]:checked');
+        const values = Array.from(checked).map((input) => input.value);
+    
+        setData((prev) => ({
+            ...prev,
+            reason: values
+        }));
+    }
+    const handleSubmit = e => {
+        e.preventDefault()
+        if(data.other_reason != '') {
+            setErr('')
+            showWarningModal(
+                'Are You Sure You Want To Request a Gate Pass?',
+                'Request Gate Pass',
+                'Cancel',
+                () => {
+                    props.reload(true, "text-wait", "Your Gate Pass is Processing")
+                    sendData(
+                        `/gatepass/create`, 
+                        data, 
+                        success, 
+                        error
+                    )
+                }
+            )
+        }else {
+            setErr('Reason is Required.')
+        }
+    }
+    const success = (e) => {
+        props.reload(true, '')
+        showOutputModal(
+            "Gate Pass Sent Successfully to the Prefect",
+            's',
+            () => {
+                props.reload(false)
+                props.closeModal(false)
+                setData((prev) => ({
+                    ...prev,
+                    other_reason: "",
+                }))
+            }
+        )
+    }
+    const error = (e) => {
+        const m = e.response.data.mesage
+        props.reload(true, '')
+        showOutputModal(
+            m,
+            'e',
+            () => {
+                props.reload(false)
+            }
+        )
+    }
+    return (
+        <UpModal
+            close={props.close} 
+            isEnableOuterClose={props.isEnableOuterClose}
+            closeModal={props.closeModal}
+            pd={props.pd}
+            bgColor='bg-white'
+            w='w-[28rem]'>
+            <div className="w-full">
+                <div className="w-full">
+                    <form method="post" onSubmit={handleSubmit}>
+                        <div className="grid gap-2">
+                            <div className="text-[1.2em] pb-3">
+                                <h1><b>Request Gate Pass Slip</b></h1>
+                            </div>
+                            <div className="grid gap-3">
+                                <div>
+                                    <FormTextfield
+                                        type="textarea"
+                                        label='Reason to Request'
+                                        name='other_reason'
+                                        id='other_reason'
+                                        val={data.other_reason}
+                                        error={err}
+                                        errorAsterisk={err != '' ? true : ''}
+                                        change={handleChange} 
+                                        color={{ border: 'border-blue-700', bg: 'bg-gray-200' }}
+                                    />
+                                </div>
+                            </div>
+                            <div className="flex justify-end">
+                                <FormButton label='Send' type="submit" />
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </UpModal>
+    )
+}
+export default RequestGatePassModal
