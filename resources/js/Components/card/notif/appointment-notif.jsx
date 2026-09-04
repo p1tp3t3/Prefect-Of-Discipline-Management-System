@@ -1,4 +1,5 @@
 import { readableDate, readableTime, toTitleCase } from "@/others/function"
+import { Calendar } from "lucide-react"
 
 const AppointmentNotif = ({ obj }) => {
     const content = JSON.parse(obj.content.replace(/'/g, '"'))
@@ -9,7 +10,7 @@ const AppointmentNotif = ({ obj }) => {
     return (
         <>
         <div className={`h-[3rem] w-[3rem] flex-shrink-0 grid place-items-center rounded-full bg-gray-200 text-green-500`}>
-            <i className={`fa-solid fa-calendar`}></i>
+            <Calendar />
         </div>
         <div className="grid gap-3">
             <div className="flex items-center gap-1">

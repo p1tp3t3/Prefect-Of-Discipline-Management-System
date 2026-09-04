@@ -3,10 +3,10 @@ import { useState } from "react"
 import RequestAbsentFormModal from "@/Components/modal/submission-form/request-absent-form-modal"
 import AbsentFormList from "@/Components/list/absent-form-list"
 import AbsentFormRequestList from "@/Components/list/absent-form-request-list"
-import Reload from "@/Components/reload/reload"
+import { useReload } from "@/context-provider/reload-provider"
 import ViewAbsentFormModal from "@/Components/modal/view/view-absent-form-modal"
-import { APIRequest } from "@/others/classes/api-req"
-import TabBtn from "@/Components/button/tab-btn"
+import { AbsentFormService } from "@/others/services/absent-form-service"
+import TabSwitcher from "@/Components/other/tab-switcher"
 import { router } from "@inertiajs/react"
 import NoteAbsentFormModal from "@/Components/modal/submission-form/note-absent-form-modal"
 import Swal from "sweetalert2"
@@ -23,17 +23,15 @@ const PrefectAbsentForm = (props) => {
     const [absent_form_list, setAbsentFormRequestList] = useState(props.absent_form_request_list)
     const [viewAbsentForm, openViewAbsentForm] = useState(false)
     const [noteAbsent, openNoteAbsent] = useState(false)
-    const [reload, setReload] = useState(false)
-    const [reloadType, setReloadType] = useState("")
-    const [reloadLabel, setReloadLabel] = useState("")
+    const { loadRegister } = useReload()
     const [rejectReason, openRejectReason] = useState(false)
     const [data, setData] = useState({
         reason: ''
     })
 
     const option = [
-        { val: 'req-current', label: 'Submitted Absent Forms' },
-        { val: 'noted', label: 'Noted Absent Forms' }
+        { key: 'req-current', label: 'Submitted Absent Forms' },
+        { key: 'noted', label: 'Noted Absent Forms' }
     ]
 
     const handleOption = (type) => {
@@ -42,7 +40,6 @@ const PrefectAbsentForm = (props) => {
     }
 
     const setEvents = (i, type) => {
-        const api = new APIRequest(null, 'post', {}, setAbsentFormRequestList)
         switch (type) {
             case 'confirm':
                 setId(i)
@@ -66,22 +63,8 @@ const PrefectAbsentForm = (props) => {
 
     const removeLoad = () => setTimeout(() => loadRegister(false), 3000)
 
-    const loadRegister = (r, t, l) => {
-        setReload(r)
-        setReloadType(t)
-        setReloadLabel(l)
-    }
-
-    const isReload = () => (reload ? "opacity-1 z-50" : "opacity-0 z-[-1]")
-
     return (
         <>
-            <Reload
-                transition={isReload()}
-                type={reloadType}
-                label={reloadLabel}
-                onClose={setReload}
-            />
             <NoteAbsentFormModal
                 close={noteAbsent}
                 closeModal={openNoteAbsent}
@@ -101,8 +84,7 @@ const PrefectAbsentForm = (props) => {
                 setData={setData}
                 sendData={() => {
                     loadRegister(true, 'text-wait', 'Rejecting Absent Form')
-                    const api = new APIRequest(`/prefect/absent-form/verify/${id}/cancel`, 'post', { reason: data.reason }, ()=>{}, successCancel, errorCancel)
-                    api.fetchData()
+                    AbsentFormService.reject(id, data.reason, () => {}, successCancel, errorCancel)
                 }}
                 warning={{ title: 'Are You Sure You Want To Reject This Absent Form?' , btn: 'Reject Absent Form' }}
             />
@@ -122,12 +104,7 @@ const PrefectAbsentForm = (props) => {
 
                         {/* Tabs */}
                         <div className="w-full overflow-x-auto">
-                            <TabBtn
-                                list={option}
-                                option={lstOption}
-                                handleSelect={handleOption}
-                                className="h-[2.2rem]"
-                            />
+                            <TabSwitcher tabs={option} value={lstOption} onChange={handleOption} />
                         </div>
 
                         {/* Table / List Section */}

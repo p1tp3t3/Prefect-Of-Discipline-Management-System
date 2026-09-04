@@ -1,17 +1,15 @@
 import NotifDisplayLayout from "@/Layouts/notif-display-layout"
 import { useEffect, useState } from "react"
 import ViewComplaintModal from "@/Components/modal/view/view-complaint-modal"
-import { APIRequest } from "@/others/classes/api-req"
+import { ComplaintService } from "@/others/services/complaint-service"
 import CircleReload from "@/Components/reload/circle-reload"
 
 const ComplaintNotification = (props) => {
     const [data, setData] = useState(null)
 
     useEffect(() => {
-        const id = new URLSearchParams(window.location.search).get('complaint_id'),
-              api = new APIRequest(`/complainant/get/${id}`, 'post', {}, setData)
-
-        api.fetchData()
+        const id = new URLSearchParams(window.location.search).get('complaint_id')
+        ComplaintService.getComplaintInfo(id, setData)
     }, [])
     return  (
             <div className="py-8">

@@ -1,8 +1,8 @@
 import LineGraph from "@/Components/card/line-graph-statistic"
 import BarGraph from "@/Components/card/bar-graph-statistic-card"
-import TabBtn from "@/Components/button/tab-btn"
+import TabSwitcher from "@/Components/other/tab-switcher"
 import { useState, useEffect } from "react"
-import { APIRequest } from "@/others/classes/api-req"
+import { ReportArchiveService } from "@/others/services/report-archive-service"
 import { getWebLink, splitStr, toTitleCase } from "@/others/function"
 import DoughnutChart from "@/Components/card/pie-chart-statistic-card"
 import GaugeChart from "@/Components/card/gauge-chart-statistic-card"
@@ -17,8 +17,8 @@ const Incident = (props) => {
     const [option, setOption] = useState('recent_incidents')
 
     const optionList = [
-        { val: 'recent_incidents', label: 'Recent Incidents' },
-        { val: 'occurence', label: 'Occurences' },
+        { key: 'recent_incidents', label: 'Recent Incidents' },
+        { key: 'occurence', label: 'Occurences' },
     ]
     const handleSelect = (type) => {
         setOption(type)
@@ -27,9 +27,9 @@ const Incident = (props) => {
     const renderContent = () => {
         switch (option) {
             case 'recent_incidents':
-                return <IncidentGroupList user_id={props.data.id} />
+                return <IncidentGroupList user_id={props.data.id} list={props.incidentGroups} />
             case 'occurence':
-                return <RecentViolationOccurenceList user_id={props.data.id} />
+                return <RecentViolationOccurenceList user_id={props.data.id} list={props.violationOccurrences} />
         }
     }
     return (
@@ -37,12 +37,7 @@ const Incident = (props) => {
         <div className="px-10 py-6 bg-white shadow shadow-black/20">
             <div className="grid gap-5">
                 <div className="">
-                    <TabBtn 
-                        list={optionList} 
-                        option={option} 
-                        handleSelect={handleSelect} 
-                        className="text-[0.9em] py-2"
-                    />
+                    <TabSwitcher tabs={optionList} value={option} onChange={handleSelect} />
                 </div>
                 {renderContent()}
             </div>
@@ -55,9 +50,8 @@ const Incident = (props) => {
 
 const RecentIncident = ({ link, option, setIncident, list }) => {
     useEffect(() => {
-        const api = new APIRequest(link, 'get', {}, setIncident)
         setIncident(null)
-        api.fetchData()
+        ReportArchiveService.getIncidentList(link, setIncident)
     }, [option])
 
     return (

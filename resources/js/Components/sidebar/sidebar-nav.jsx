@@ -1,23 +1,50 @@
-import { Link } from "@inertiajs/react"
+import { Link, usePage } from "@inertiajs/react"
 import { useState } from "react"
-import { motion, AnimatePresence } from "framer-motion"
+import { List, ListItemButton, ListItemIcon, ListItemText, Collapse } from "@mui/material"
+import { ChevronRight } from "lucide-react"
 
-const listStyle =
-        "px-5 w-full cursor-pointer flex gap-3 items-center py-2 text-white text-[0.9em] hover:bg-[#1e3a8a] hover:text-white transition-[0.3s] rounded-md",
-    listStyle2 =
-        "flex gap-3 items-center cursor-pointer px-5 pl-12 w-full py-2 text-white text-[1em] hover:bg-[#1e3a8a] hover:text-white transition-[0.3s] rounded-md"
+// MUI's sx-generated styles win the cascade over Tailwind utility classes
+// (sx styles are injected later), so layout/color/background all have to be
+// set via sx here — Tailwind classes on these elements get silently
+// overridden by MUI's own defaults (padding, near-black text, etc). The
+// active-nav highlight is likewise driven by MUI's own `selected` state
+// (via &.Mui-selected) rather than a manually toggled Tailwind class, for
+// the same reason.
+const itemSx = {
+    px: 2.5,
+    py: 1,
+    gap: 1.5,
+    width: "100%",
+    cursor: "pointer",
+    borderRadius: "0.375rem",
+    transition: "background-color 0.3s, color 0.3s",
+    color: "#fff",
+    fontSize: "0.9em",
+    "&:hover": { backgroundColor: "#1e3a8a", color: "#fff" },
+    "&.Mui-selected": { backgroundColor: "#1e3a8a", color: "#fff" },
+    "&.Mui-selected:hover": { backgroundColor: "#1e3a8a", color: "#fff" },
+}
+const subItemSx = {
+    ...itemSx,
+    pl: 6,
+    pr: 2.5,
+    fontSize: "1em",
+}
+const iconSx = { color: "inherit", minWidth: "auto" }
+const textSx = { "& .MuiListItemText-primary": { color: "inherit", fontSize: "inherit" } }
 
 // Renders a role's sidebar nav from a single declarative array of
 // { type: 'link', id, href, icon, label, show? } or
 // { type: 'dropdown', id, icon, label, items: [...], show? } entries,
 // so every role's sidebar body is just data instead of repeated JSX + state.
 const SidebarNav = ({ list, height = "h-[26rem]" }) => {
+    const { url } = usePage()
     const [open, setOpen] = useState({})
     const toggle = (id) => setOpen((prev) => ({ ...prev, [id]: !prev[id] }))
 
     return (
         <div className={`${height} overflow-auto overflow-x-hidden dropdown`}>
-            <ul className="p-0 list-none px-5 nav-list">
+            <List disablePadding sx={{ px: 2.5 }} className="nav-list">
                 {list.filter((item) => item.show ?? true).map((item) =>
                     item.type === "dropdown" ? (
                         <DropdownItem
@@ -25,63 +52,70 @@ const SidebarNav = ({ list, height = "h-[26rem]" }) => {
                             item={item}
                             isOpen={!!open[item.id]}
                             toggle={() => toggle(item.id)}
+                            url={url}
                         />
                     ) : (
-                        <NavLink key={item.id} item={item} />
+                        <NavLink key={item.id} item={item} url={url} />
                     )
                 )}
-            </ul>
+            </List>
         </div>
     )
 }
 
-const NavLink = ({ item }) => (
-    <Link href={item.href}>
-        <li className={`${listStyle} nav`} id={item.id}>
-            <i className={`fa-solid ${item.icon}`}></i>
-            <div>{item.label}</div>
-        </li>
-    </Link>
+// `id` is matched as a literal substring of the current URL — the same
+// convention `sidebar-pages.js` documents (ids are deliberately reused
+// across roles' entries since only one role's items ever render at once).
+const NavLink = ({ item, url }) => (
+    <ListItemButton
+        component={Link}
+        href={item.href}
+        id={item.id}
+        className="nav"
+        disableGutters
+        selected={url.includes(item.id)}
+        sx={itemSx}
+    >
+        <ListItemIcon sx={iconSx}>
+            <item.icon size={16} />
+        </ListItemIcon>
+        <ListItemText primary={item.label} sx={textSx} />
+    </ListItemButton>
 )
 
-const DropdownItem = ({ item, isOpen, toggle }) => (
+const DropdownItem = ({ item, isOpen, toggle, url }) => (
     <>
-        <li className={listStyle} onClick={toggle}>
-            <i className={`fa-solid ${item.icon}`}></i>
-            <div className="flex justify-between w-full">
-                <span>{item.label}</span>
-                <span>
-                    <motion.i
-                        animate={{ rotate: isOpen ? 90 : 0 }}
-                        transition={{ duration: 0.3 }}
-                        className="fa-solid fa-chevron-right"
-                    />
-                </span>
-            </div>
-        </li>
-        <AnimatePresence initial={false}>
-            {isOpen && (
-                <motion.li
-                    key={`${item.id}-dropdown`}
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.3, ease: "easeInOut" }}
-                    className="overflow-hidden text-[0.8em]"
-                >
-                    <ul className="p-0 dropdown-nav-list">
-                        {item.items.filter((sub) => sub.show ?? true).map((sub) => (
-                            <Link key={sub.id} href={sub.href}>
-                                <li className={`${listStyle2} nav`} id={sub.id}>
-                                    <i className={`fa-solid ${sub.icon}`}></i>
-                                    <div>{sub.label}</div>
-                                </li>
-                            </Link>
-                        ))}
-                    </ul>
-                </motion.li>
-            )}
-        </AnimatePresence>
+        <ListItemButton onClick={toggle} disableGutters sx={itemSx}>
+            <ListItemIcon sx={iconSx}>
+                <item.icon size={16} />
+            </ListItemIcon>
+            <ListItemText primary={item.label} sx={textSx} />
+            <ChevronRight
+                size={14}
+                className={`transition-transform duration-300 ${isOpen ? "rotate-90" : ""}`}
+            />
+        </ListItemButton>
+        <Collapse in={isOpen} timeout={300} unmountOnExit>
+            <List disablePadding className="dropdown-nav-list text-[0.8em]">
+                {item.items.filter((sub) => sub.show ?? true).map((sub) => (
+                    <ListItemButton
+                        key={sub.id}
+                        component={Link}
+                        href={sub.href}
+                        id={sub.id}
+                        className="nav"
+                        disableGutters
+                        selected={url.includes(sub.id)}
+                        sx={subItemSx}
+                    >
+                        <ListItemIcon sx={iconSx}>
+                            <sub.icon size={16} />
+                        </ListItemIcon>
+                        <ListItemText primary={sub.label} sx={textSx} />
+                    </ListItemButton>
+                ))}
+            </List>
+        </Collapse>
     </>
 )
 

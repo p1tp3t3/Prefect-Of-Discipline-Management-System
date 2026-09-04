@@ -2,10 +2,11 @@ import "./style.css";
 import ProfilePic from "../other/profile-pic";
 import { getProfilePic, readableDate, readableTime, toTitleCase } from "../../others/function";
 import { useMemo, useState } from "react";
-import CircleReload from "../reload/circle-reload";
+import ListSkeleton from "../reload/list-skeleton";
 import ActionBtn from "../button/action-btn";
 import { DataGrid, GridActionsCellItem, GridToolbarContainer } from "@mui/x-data-grid";
 import { Box, Button } from "@mui/material";
+import { FolderOpen } from "lucide-react";
 
 function CustomNoRowsOverlay() {
   return (
@@ -21,7 +22,7 @@ function CustomNoRowsOverlay() {
       }}
     >
       <div style={{ fontSize: "3em" }}>
-        <i className="fa-solid fa-folder-open"></i>
+        <FolderOpen size="1em" />
       </div>
       <div>No complaints found</div>
       <div style={{ fontSize: "0.8em", marginTop: 4 }}>
@@ -65,6 +66,11 @@ const ComplaintList = ({
         renderCell: (params) => <span>{params.value + 1}.</span>,
         headerAlign: "center",
         align: "center",
+      },
+      {
+        field: "complaint_number",
+        headerName: "Reference No.",
+        width: 130,
       },
     ];
 
@@ -211,6 +217,7 @@ const ComplaintList = ({
     <>
       {list?.data ? (
         <Box sx={{ width: "100%", overflowX: "auto" }}>
+  <Box sx={{ minWidth: "1100px" }}>
   <DataGrid
     rows={rows}
     columns={columns}
@@ -227,12 +234,13 @@ const ComplaintList = ({
         NoRowsOverlay: CustomNoRowsOverlay, // <- custom empty state
     }}
   />
+  </Box>
 </Box>
 
       ) : (
         <div className="flex justify-center items-center w-full">
           <div className="text-center py-10 text-[0.9em]">
-            <CircleReload size={3} />
+            <ListSkeleton rows={5} />
           </div>
         </div>
       )}

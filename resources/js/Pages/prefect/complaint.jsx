@@ -3,12 +3,12 @@ import IssueComplaintModal from "@/Components/modal/submission-form/issue-compla
 import ComplaintList from "@/Components/list/complaint-list"
 import { useState } from "react"
 import DropdownField from "@/Components/input/dropdown"
-import Reload from "@/Components/reload/reload"
+import { useReload } from "@/context-provider/reload-provider"
 import ViewComplaintModal from "@/Components/modal/view/view-complaint-modal"
 import IssueViolationModal from "@/Components/modal/submission-form/issue-violation-modal"
-import { APIRequest } from "@/others/classes/api-req"
+import { ComplaintService } from "@/others/services/complaint-service"
 import Btn from "@/Components/button/normal-btn"
-import TabBtn from "@/Components/button/tab-btn"
+import TabSwitcher from "@/Components/other/tab-switcher"
 import { router } from "@inertiajs/react"
 import SearchUserBar from "@/Components/input/search-user-bar"
 import Swal from "sweetalert2"
@@ -17,6 +17,7 @@ import { change, showWarningModal } from "@/others/function"
 import ActionBtn from "@/Components/button/action-btn"
 import SetReasonModal from "@/Components/modal/submission-form/set-reason-modal"
 import IssueViolationModal2 from "@/Components/modal/submission-form/issue-violation-modal2"
+import { List, PauseCircle, RotateCw } from "lucide-react"
 
 const PrefectComplaint = (props) => {
   const url = new URLSearchParams(window.location.search)
@@ -40,9 +41,7 @@ const PrefectComplaint = (props) => {
   const [complaint, setComplaint] = useState(null)
   const [rejectReason, openRejectReason] = useState(false)
   const [issueViolation, openIssueViolation] = useState(false)
-  const [reload, setReload] = useState(false)
-  const [reloadType, setReloadType] = useState("")
-  const [reloadLabel, setReloadLabel] = useState("")
+  const { loadRegister } = useReload()
   const [complaintList, setComplaintList] = useState(props.complaint_list)
   const [select, enableSelect] = useState(false)
   const [select2, enableSelect2] = useState(false)
@@ -51,44 +50,14 @@ const PrefectComplaint = (props) => {
   const [role, setRole] = useState(params.get("role") || "all")
   const [year, setYear] = useState(params.get("year") || "all")
   const optionTab = [
-    {
-      val: "all",
-      label: "All Complaints",
-      icon: "list", // 📋 icon
-      colorHighlight: "bg-blue-600 text-white",
-      borderColor: "border-blue-600",
-      textColor: "text-blue-600",
-      hover: "hover:bg-blue-100",
-    },
-    {
-      val: "pending",
-      label: "Pending",
-      icon: "circle-pause", // ⏸️ icon
-      colorHighlight: "bg-yellow-500 text-white",
-      borderColor: "border-yellow-500",
-      textColor: "text-yellow-500",
-      hover: "hover:bg-yellow-100",
-    },
-    {
-      val: "ongoing",
-      label: "Ongoing",
-      icon: "rotate-right", // 🔄 icon
-      colorHighlight: "bg-orange-500 text-white",
-      borderColor: "border-orange-500",
-      textColor: "text-orange-500",
-      hover: "hover:bg-orange-100",
-    },
+    { key: "all", label: "All Complaints", icon: List },
+    { key: "pending", label: "Pending", icon: PauseCircle },
+    { key: "ongoing", label: "Ongoing", icon: RotateCw },
   ];
 
 
   const handleSearch = (e) => setSearch(e.target.value)
   const handleChange = (e) => change(e, setData)
-  const isReload = () => (reload ? "opacity-1 z-50" : "opacity-0 z-[-1]")
-  const loadRegister = (r, t, l) => {
-    setReload(r)
-    setReloadType(t)
-    setReloadLabel(l)
-  }
 
   const setId = (id, type, obj = null) => {
     setComplainantId(id)
@@ -119,9 +88,7 @@ const PrefectComplaint = (props) => {
                       'Cancel',
                       () => {
                           loadRegister(true, "text-wait", confirmTxt)
-                          const callBack = (confirm) ? successConfirm : successCancel
-                          const api = new APIRequest(route, 'post', {}, setter, callBack, error)
-                          api.fetchData()
+                          ComplaintService.confirm(id, setter, successConfirm, error)
                       }
                   )
                   break
@@ -163,12 +130,10 @@ const PrefectComplaint = (props) => {
             );
             const ids = Array.from(checkboxes).map((checkbox) => checkbox.value);
             const param = new URLSearchParams(window.location.search);
-            const data = { ids: ids, action: type, page: param.get("page") || 1 };
+            const callBack = (confirm) ? successConfirm : successCancel
 
             loadRegister(true, "text-wait", confirmTxt)
-            const callBack = (confirm) ? successConfirm : successCancel
-            const api = new APIRequest(`/complaint/select/${type}`, 'post', data, setter, callBack, error)
-            api.fetchData()
+            ComplaintService.bulkAction(type, ids, param.get("page") || 1, setter, callBack, error)
         }
     )
   }
@@ -227,13 +192,6 @@ const PrefectComplaint = (props) => {
 
   return (
     <>
-      <Reload
-        transition={isReload()}
-        type={reloadType}
-        label={reloadLabel}
-        onClose={setReload}
-      />
-
       {/* Modals */}
       <IssueViolationModal2
         close={issueViolation}
@@ -257,8 +215,7 @@ const PrefectComplaint = (props) => {
         setData={setData2}
         sendData={() => {
           loadRegister(true, "text-wait", 'Rejecting Complaint Is Processing')
-          const api = new APIRequest(`/complaint/verify/${id}/cancel`, 'post', { reason: data2.reason }, setter, successCancel, error)
-          api.fetchData()
+          ComplaintService.reject(id, data2.reason, setter, successCancel, error)
         }}
         warning={{ title: 'Are You Sure You Want To Reject This Complaint?' , btn: 'Reject Complaint' }}
       />
@@ -327,12 +284,7 @@ const PrefectComplaint = (props) => {
 
               {/* Tabs */}
               <div className="overflow-x-auto flex justify-between items-center">
-                <TabBtn
-                  list={optionTab}
-                  option={choose}
-                  handleSelect={handleSelect}
-                  className="h-[2.2rem]"
-                />
+                <TabSwitcher tabs={optionTab} value={choose} onChange={handleSelect} />
                 {/* Right side */}
                 {url.get('status') == 'pending' &&
                 <div className="flex flex-wrap gap-3 items-center">

@@ -4,6 +4,7 @@ import "../style.css";
 import LatestActiveAccountList from "@/Components/list/latest-active-user-list";
 import { Head, Link } from "@inertiajs/react";
 import { motion } from "framer-motion";
+import { User, GraduationCap, FileText } from "lucide-react";
 
 const TeachingStaffDashboard = (props) => {
   const isProgramHead = props.is_program_head;
@@ -25,7 +26,7 @@ const TeachingStaffDashboard = (props) => {
                   <QuantityCard
                     h="h-[9rem]"
                     num={props.faculty}
-                    icon="fa-user-tie"
+                    icon={User}
                     textColor="text-green-700"
                     label="Total Faculty Members"
                     color={{
@@ -39,7 +40,7 @@ const TeachingStaffDashboard = (props) => {
                 <QuantityCard
                   h="h-[9rem]"
                   num={props.student_list}
-                  icon="fa-user-graduate"
+                  icon={GraduationCap}
                   textColor="text-green-700"
                   label="Total Enrolled Students"
                   color={{
@@ -52,7 +53,7 @@ const TeachingStaffDashboard = (props) => {
                 <QuantityCard
                   h="h-[9rem]"
                   num={props.complaint}
-                  icon="fa-file"
+                  icon={FileText}
                   textColor="text-green-700"
                   label="Total Complaints"
                   color={{
@@ -66,7 +67,7 @@ const TeachingStaffDashboard = (props) => {
                   <QuantityCard
                     h="h-[9rem]"
                     num={props.referral}
-                    icon="fa-file"
+                    icon={FileText}
                     label="Total Referral"
                     textColor="text-blue-700"
                     color={{

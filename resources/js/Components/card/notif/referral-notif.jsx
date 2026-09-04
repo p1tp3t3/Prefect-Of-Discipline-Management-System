@@ -1,5 +1,6 @@
 import NotificationWrapper from "@/wrapper/notif-wrapper"
 import { readableDate, readableTime, toTitleCase } from "@/others/function"
+import { TriangleAlert } from "lucide-react"
 
 const ReferralNotif = ({ obj }) => {
     const content = JSON.parse(obj.content.replace(/'/g, '"'))
@@ -10,7 +11,7 @@ const ReferralNotif = ({ obj }) => {
         return (
             <>
                 <div className={`h-[3rem] w-[3rem] flex-shrink-0 grid place-items-center rounded-full bg-red-300 text-red-700`}>
-                    <i className={`fa-solid fa-triangle-exclamation`}></i>
+                    <TriangleAlert />
                 </div>
                 <div className="grid gap-2">
                     <div className="flex gap-2 items-center">

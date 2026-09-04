@@ -107,20 +107,22 @@ const StudentViolationList = ({ list = [] }) => {
 
   return (
     <Box sx={{ width: "100%", overflowX: "auto", p: 2, bgcolor: "white", borderRadius: 2 }}>
-      <DataGrid
-        rows={rows}
-        columns={columns}
-        rowsPerPageOptions={[20, 50, 100]} // user-selectable options
-        disableSelectionOnClick
-        hideFooterSelectedRowCount
-        getRowId={(row) => row.id}
-        initialState={{
-        pagination: { paginationModel: { pageSize: 20, page: 0 } }
-        }}
-        pageSizeOptions={[20, 50, 100]}
-        pagination
-        showToolbar
-      />
+      <Box sx={{ minWidth: "900px" }}>
+        <DataGrid
+          rows={rows}
+          columns={columns}
+          rowsPerPageOptions={[20, 50, 100]} // user-selectable options
+          disableSelectionOnClick
+          hideFooterSelectedRowCount
+          getRowId={(row) => row.id}
+          initialState={{
+          pagination: { paginationModel: { pageSize: 20, page: 0 } }
+          }}
+          pageSizeOptions={[20, 50, 100]}
+          pagination
+          showToolbar
+        />
+      </Box>
     </Box>
   );
 };

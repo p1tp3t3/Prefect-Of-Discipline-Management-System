@@ -1,4 +1,5 @@
 import { readableDate, readableTime } from "@/others/function"
+import { User } from "lucide-react"
 
 const NormalNotif = ({ obj }) => {
     const content = JSON.parse(obj.content.replace(/'/g, '"'))
@@ -9,7 +10,7 @@ const NormalNotif = ({ obj }) => {
        return (
            <>
            <div className="h-[3rem] w-[3rem] flex-shrink-0 grid place-items-center rounded-full bg-blue-300/20 text-blue-600">
-               <i className="fa-solid fa-user"></i>
+               <User />
            </div>
            <div className="grid gap-2">
                <div className="flex gap-2 items-center">

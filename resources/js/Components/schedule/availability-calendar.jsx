@@ -1,18 +1,11 @@
-import { APIRequest } from "@/others/classes/api-req";
 import { useState, useContext } from "react"
 import AuthContext from "@/context-provider/auth-provider";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 
 const AvailabilityCalendar = ({ event = (d) => console.log(d) }) => {
     const { usr } = useContext(AuthContext)
     const [currentDate, setCurrentDate] = useState(new Date());
     const [appointment_list, setAppointmentList] = useState([])
-    
-
-    const api = new APIRequest(
-        `/api/appointment/sched/${usr.id}`,
-        {}, 
-        setAppointmentList
-    )
 
     const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
 
@@ -61,7 +54,7 @@ const AvailabilityCalendar = ({ event = (d) => console.log(d) }) => {
                             type="button" 
                             className="py-1 px-4" 
                             onClick={() => handleMonth('prev')}>
-                            <i className="fa-solid fa-arrow-left"></i>
+                            <ArrowLeft size={14} />
                         </button>
                         <input  
                             className="border-none w-[10rem] bg-gray-200 text-[0.9em]"
@@ -74,7 +67,7 @@ const AvailabilityCalendar = ({ event = (d) => console.log(d) }) => {
                             type="button" 
                             className="py-1 px-4" 
                             onClick={() => handleMonth('next')}>
-                            <i className="fa-solid fa-arrow-right"></i>
+                            <ArrowRight size={14} />
                         </button>
                     </div>
                 </div>

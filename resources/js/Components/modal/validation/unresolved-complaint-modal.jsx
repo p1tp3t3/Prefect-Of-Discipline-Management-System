@@ -1,6 +1,7 @@
 import { Link, router } from "@inertiajs/react"
 import AlertModal from "../alert-modal"
 import Btn from "@/Components/button/normal-btn"
+import { TriangleAlert } from "lucide-react"
 
 const UnresolvedComplaintModal = (props) => {
     return (
@@ -15,7 +16,7 @@ const UnresolvedComplaintModal = (props) => {
             <div className="bg-white p-4 rounded-lg w-full grid gap-5">
                 <div className="text-centergrid grid gap-3 place-items-center">
                     <div>
-                        <i className="fa-solid fa-triangle-exclamation text-[8em] text-red-500"></i>
+                        <TriangleAlert size="8em" className="text-red-500" />
                     </div>
                     <p className="text-[0.9em]">You Have {props.count} Unresolved Complaints this Year. Do You Want to See the Unresolved Complaints?</p>
                 </div>

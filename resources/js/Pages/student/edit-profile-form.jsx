@@ -1,10 +1,14 @@
 import EditProfileModal from "@/Components/modal/submission-form/edit-profile-modal"
 import { change, getProfilePic, showOutputModal, showWarningModal, splitStr } from "@/others/function";
-import { useForm } from "@inertiajs/react";
-import { useState } from "react";
-import Reload from "@/Components/reload/reload";
-import { APIRequest } from "@/others/classes/api-req";
+import { useForm, router } from "@inertiajs/react";
+import { useEffect, useState } from "react";
+import { useReload } from "@/context-provider/reload-provider";
+import { ProfileService } from "@/others/services/profile-service";
+import { FormCache } from "@/others/classes/form-cache";
 import AuthLayout from "@/Layouts/auth-layout";
+import SetupLayout from "@/Layouts/setup-layout";
+
+const PROFILE_CACHE_KEY = "account-setup-profile";
 
 const StudentEditProfileForm = (props) => {
 
@@ -83,23 +87,27 @@ const StudentEditProfileForm = (props) => {
         allow_gatepass: props.otherUserProfile.permissions?.allow_gatepass
     }
 
-    const { data, setData, post, processing, errors } = useForm(profileData);
-    
-    const [reload, setReload] = useState(false),
-          [reloadType, setReloadType] = useState(""),
-          [reloadLabel, setReloadLabel] = useState(""),
-          [clickedOk, setClickOk] = useState(false);
+    const isForceSetup = !!props.force_account_setup;
+    const cachedDraft = isForceSetup ? FormCache.load(PROFILE_CACHE_KEY) : null;
+
+    const { data, setData, post, processing, errors } = useForm(
+        cachedDraft ? { ...profileData, ...cachedDraft } : profileData
+    );
+
+    // Autosave a draft while setup is forced, so an accidentally closed tab
+    // doesn't lose unsaved input — nothing is sent to the backend from this
+    // page until the password step is also filled in (AccountSetupController).
+    useEffect(() => {
+        if (!isForceSetup) return;
+        const t = setTimeout(() => FormCache.save(PROFILE_CACHE_KEY, data), 600);
+        return () => clearTimeout(t);
+    }, [isForceSetup, data]);
+
+    const [clickedOk, setClickOk] = useState(false);
 
     const [updatedData, setUpdatedData] = useState({})
 
-    const isReload = () => {
-        return reload ? "opacity-1 z-50" : "opacity-0 z-[-1]";
-    };
-    const loadRegister = (r, t, l) => {
-        setReload(r);
-        setReloadType(t);
-        setReloadLabel(l);
-    };
+    const { loadRegister } = useReload();
     const handleChange = (e) => {
         change(e, setData);
     };
@@ -122,6 +130,15 @@ const StudentEditProfileForm = (props) => {
     const nameLabel = isEditingOtherUser ? `${profileData.first_name} ${profileData.last_name}'s` : "Your";
 
     const updateProfile = (data) => {
+        if (isForceSetup) {
+            // Don't hit the backend yet — cache the completed step and move
+            // on to the password step, where both are saved together.
+            FormCache.save(PROFILE_CACHE_KEY, data).then(() => {
+                router.visit(`/settings/${profileData.username}`);
+            });
+            return;
+        }
+
         showWarningModal(
             `Are you sure you want to update ${nameLabel} profile information?`,
             "Update Profile",
@@ -133,16 +150,7 @@ const StudentEditProfileForm = (props) => {
                     `${nameLabel} profile information is updating`
                 );
 
-                const api = new APIRequest(
-                    `/profile/${profileData.username}/edit`, 
-                    "post",
-                    data,
-                    () => {},
-                    success,
-                    error
-                );
-
-                api.sendPostData();
+                ProfileService.updateProfile(profileData.username, data, success, error);
             }
         );
     };
@@ -170,11 +178,6 @@ const StudentEditProfileForm = (props) => {
 
     return (
         <>
-        <Reload
-            transition={isReload()}
-            type={reloadType}
-            label={reloadLabel}
-        />
             <div className="py-5">
                 <div className="bg-white py-5 px-10 shadow-md rounded-md">
                     <EditProfileModal.Body
@@ -189,6 +192,7 @@ const StudentEditProfileForm = (props) => {
                         setUpdate={setUpdatedData}
                         openAccessTokenModal={openAccessTokenModal}
                         program={props.program}
+                        submitLabel={isForceSetup ? "Continue to Password Setup" : "Save Changes"}
                     />
                 </div>
             </div>
@@ -196,6 +200,9 @@ const StudentEditProfileForm = (props) => {
     )
 }
 
-StudentEditProfileForm.layout = (page) => <AuthLayout user={page.props.user}>{page}</AuthLayout>
+StudentEditProfileForm.layout = (page) =>
+    page.props.force_account_setup
+        ? <SetupLayout user={page.props.user}>{page}</SetupLayout>
+        : <AuthLayout user={page.props.user}>{page}</AuthLayout>
 
 export default StudentEditProfileForm

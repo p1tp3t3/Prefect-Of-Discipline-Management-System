@@ -1,37 +1,21 @@
 import { useState } from "react";
 import AuthLayout from "@/Layouts/auth-layout";
 import RequestGatePassModal from "@/Components/modal/submission-form/request-gatepass-modal";
-import Reload from "@/Components/reload/reload";
+import { useReload } from "@/context-provider/reload-provider";
 import { readableDate, readableTime, toTitleCase } from "@/others/function";
 import { Head, Link } from "@inertiajs/react";
 import Btn from "@/Components/button/normal-btn";
 
 const GatePass = (props) => {
-  const [requestGatePass, openRequestGatePass] = useState(false),
-    [reload, setReload] = useState(false),
-    [reloadType, setReloadType] = useState(""),
-    [reloadLabel, setReloadLabel] = useState("");
+  const [requestGatePass, openRequestGatePass] = useState(false);
 
-  const loadRegister = (r, t, l) => {
-    setReload(r);
-    setReloadType(t);
-    setReloadLabel(l);
-  };
-  const isReload = () => {
-    return reload ? "opacity-1 z-50" : "opacity-0 z-[-1]";
-  };
+  const { loadRegister } = useReload();
 
   const gatepass = props.user_gatepass.gatepass[0];
 
   return (
     <>
       <Head title="Gate Pass" />
-      <Reload
-        transition={isReload()}
-        type={reloadType}
-        label={reloadLabel}
-        onClose={setReload}
-      />
       <RequestGatePassModal
         close={requestGatePass}
         closeModal={openRequestGatePass}

@@ -6,11 +6,12 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use NotificationChannels\WebPush\HasPushSubscriptions;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, \Illuminate\Auth\MustVerifyEmail;
+    use HasFactory, Notifiable, HasPushSubscriptions, \Illuminate\Auth\MustVerifyEmail;
 
     public $timestamps = true;
 
@@ -23,6 +24,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'role',
         'username',
         'email',
+        'already_update_profile',
         'already_update_password',
         'password',
         'activate',
@@ -100,11 +102,6 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(FamilyMember::class, 'member_id', 'id');
     }
 
-    public function subscription()
-    {
-        return $this->hasMany(WebPushSubscription::class, 'user_id', 'id');
-    }
-
     public function educationBackground()
     {
         return $this->hasMany(EducationBackground::class, 'student_id', 'id');
@@ -173,7 +170,7 @@ class User extends Authenticatable implements MustVerifyEmail
     private function relationsForRole(string $role): array
     {
         return match ($role) {
-            'student' => ['program', 'enrollments', 'educationBackground', 'profile', 'permissions'],
+            'student' => ['program', 'enrollments.program', 'educationBackground', 'profile', 'permissions'],
             'teaching_staff' => ['teachingStaff.program', 'profile', 'permissions'],
             'parent' => ['parent', 'profile', 'permissions'],
             default => ['profile', 'permissions'],
@@ -247,7 +244,7 @@ class User extends Authenticatable implements MustVerifyEmail
         return [
             'user' => auth()->user(),
             'account_list' => [
-                'data' => $data,
+                'data' => \App\Http\Resources\UserResource::collection($data),
             ],
         ];
     }

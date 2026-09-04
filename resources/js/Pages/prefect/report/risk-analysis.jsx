@@ -1,49 +1,86 @@
-import React, { useRef, useState } from "react"
-import { Bar, Pie, Line } from "react-chartjs-2"
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-  ArcElement,
-  PointElement,
-  LineElement,
-} from "chart.js"
+import { useEffect, useState } from "react"
 import Btn from "@/Components/button/normal-btn"
+import { Table, TableHead, TableBody, TableRow, TableCell } from "@mui/material"
 import LineGraph from "@/Components/card/line-graph-statistic"
 import BarGraph from "@/Components/card/bar-graph-statistic-card"
 import ProfilePic from "@/Components/other/profile-pic"
-import { change, getProfilePic, showUserType } from "@/others/function"
+import { change, getProfilePic, showUserType, configBroadcast } from "@/others/function"
+import { ReportArchiveService } from "@/others/services/report-archive-service"
 import { router } from "@inertiajs/react"
+import { UserX } from "lucide-react"
 
-// Register Chart.js components
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-  ArcElement,
-  PointElement,
-  LineElement
-)
+const monthNames = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sept", "Oct", "Nov", "Dec",
+]
 
 const AnalyticalReport = (props) => {
-  const reportRef = useRef()
   const [data, setData] = useState({
     date_from: "",
     date_to: "",
   })
 
-  const monthNames = [
-    "JAN", "FEB", "MAR", "APR", "MAY",
-    "JUN", "JUL", "AUG", "SEPT", "OCT",
-    "NOV", "DEC",
-  ]
+  // On-screen preview data. Defaults to what the controller already
+  // computed for the current year; refreshed from /prefect/analytics/preview
+  // once both dates are picked, so the filter actually affects the screen
+  // instead of only the PDF export.
+  const [preview, setPreview] = useState({
+    quantity: props.quantity,
+    violationProgram: props.violationProgram,
+    top5Student: props.top5Student,
+    incidentTrendLabels: monthNames.slice(0, props.incidentLineGraph.length),
+    incidentTrendValues: props.incidentLineGraph,
+  })
+
+  const [exportStatus, setExportStatus] = useState('idle') // idle | queued | ready | failed
+  const [exportUrl, setExportUrl] = useState(null)
+  const [exportViewUrl, setExportViewUrl] = useState(null)
+
+  useEffect(() => {
+    if (!data.date_from || !data.date_to) return
+
+    ReportArchiveService.getAnalyticsPreview(data, (res) => {
+      setPreview({
+        quantity: [res.incidentCount, res.resolved, res.totalViolations],
+        violationProgram: res.violationPerProgram,
+        top5Student: res.top5Students,
+        incidentTrendLabels: (res.incidentTrendLabels ?? []).length
+          ? res.incidentTrendLabels
+          : monthNames,
+        incidentTrendValues: res.incidentTrendValues ?? [],
+      })
+    })
+  }, [data.date_from, data.date_to])
+
+  useEffect(() => {
+    if (!props.userId) return
+
+    configBroadcast(
+      'private',
+      `job-status.progress.user.${props.userId}`,
+      'Analytics report status',
+      '.ReportGenerated',
+      (e) => {
+        if (e.status === 'ready') {
+          setExportStatus('ready')
+          setExportUrl(e.download_url)
+          setExportViewUrl(e.view_url)
+        } else if (e.status === 'failed') {
+          setExportStatus('failed')
+        }
+      }
+    )
+  }, [props.userId])
+
+  const handleExport = () => {
+    if (!data.date_from || !data.date_to) return
+
+    setExportStatus('queued')
+    setExportUrl(null)
+    setExportViewUrl(null)
+
+    ReportArchiveService.generateAnalyticReport(data, () => {}, () => setExportStatus('failed'))
+  }
 
   return (
     <div className="w-full">
@@ -67,15 +104,31 @@ const AnalyticalReport = (props) => {
               className="border border-gray-300 rounded px-2 py-1 text-sm"
             />
           </div>
-          <Btn
-            onclick={() => {
-              const query = new URLSearchParams(data).toString()
-              const downloadUrl = `/prefect/analytic-report/generate?${query}`
-              window.open(downloadUrl, "_blank")
-            }}
-          >
-            Export as PDF
-          </Btn>
+          <div className="flex items-center gap-3">
+            <Btn onclick={handleExport}>
+              {exportStatus === 'queued' ? 'Generating…' : 'Export as PDF'}
+            </Btn>
+            {exportStatus === 'ready' && exportUrl &&
+            <>
+              {exportViewUrl &&
+              <a
+                href={exportViewUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="px-3 py-1.5 rounded border border-green-600 text-green-700 text-[0.9em] hover:bg-green-50"
+              >
+                View
+              </a>}
+              <a
+                href={exportUrl}
+                className="px-3 py-1.5 rounded bg-green-600 text-white text-[0.9em] hover:bg-green-700"
+              >
+                Download
+              </a>
+            </>}
+            {exportStatus === 'failed' &&
+            <span className="text-red-600 text-[0.85em]">Failed to generate report.</span>}
+          </div>
         </div>
       </div>
 
@@ -86,49 +139,82 @@ const AnalyticalReport = (props) => {
           <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
             <h2 className="text-lg sm:text-xl font-semibold text-blue-800">Total Incidents</h2>
             <p className="text-2xl sm:text-3xl font-bold text-blue-600">
-              {props.quantity[0]}
+              {preview.quantity[0]}
             </p>
           </div>
           <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
             <h2 className="text-lg sm:text-xl font-semibold text-yellow-800">Total Violations</h2>
             <p className="text-2xl sm:text-3xl font-bold text-yellow-600">
-              {props.quantity[2]}
+              {preview.quantity[2]}
             </p>
           </div>
           <div className="bg-green-50 p-4 rounded-lg border border-green-200">
             <h2 className="text-lg sm:text-xl font-semibold text-green-800">Resolved Complaints</h2>
             <p className="text-2xl sm:text-3xl font-bold text-green-600">
-              {props.quantity[1]}
+              {preview.quantity[1]}
             </p>
           </div>
+        </div>
+
+        {/* Incident Trend */}
+        <div className="mb-8 h-[20rem]">
+          <LineGraph
+            label={preview.incidentTrendLabels}
+            dataset={[{
+              label: 'Incidents',
+              data: preview.incidentTrendValues,
+              borderColor: '#1a237e',
+              backgroundColor: 'rgba(26,35,126,0.15)',
+              fill: true,
+              tension: 0.3,
+            }]}
+            title="Incident Trend"
+            xTitle="Month"
+            yTitle="Incidents"
+            withBorder
+          />
         </div>
 
         {/* Violations per Program */}
         <div className="mb-8">
           <h2 className="text-[1.1em] mb-4 font-bold">Violations Per Program</h2>
 
-          <div className="w-full overflow-x-auto">
-            <table className="w-full bg-white text-sm">
-              <thead>
-                <tr className="bg-gray-100 text-[0.8em] sm:text-[1em]">
-                  <th className="py-2 px-4 border-b text-left">#</th>
-                  <th className="py-2 px-4 border-b text-left">Program</th>
-                  <th className="py-2 px-4 border-b text-left">Students With Violations</th>
-                  <th className="py-2 px-4 border-b text-left">Total Violations</th>
-                </tr>
-              </thead>
+          {preview.violationProgram.length > 0 &&
+          <div className="mb-5 h-[18rem]">
+            <BarGraph
+              label={preview.violationProgram.map((e) => e.program)}
+              dataset={[{
+                label: 'Total Violations',
+                data: preview.violationProgram.map((e) => e.total_violations),
+                backgroundColor: '#3b82f6',
+              }]}
+              title="Violations Per Program"
+              withBorder
+            />
+          </div>}
 
-              <tbody>
-                {props.violationProgram.map((e, i) => (
-                  <tr key={i} className="text-[0.9em]">
-                    <td className="py-2 px-4 border-b">{i + 1}.</td>
-                    <td className="py-2 px-4 border-b">{e.program}</td>
-                    <td className="py-2 px-4 border-b">{e.students_with_violations}</td>
-                    <td className="py-2 px-4 border-b">{e.total_violations}</td>
-                  </tr>
+          <div className="w-full overflow-x-auto">
+            <Table sx={{ width: "100%", backgroundColor: "#fff", fontSize: "0.875rem" }}>
+              <TableHead>
+                <TableRow sx={{ "& .MuiTableCell-root": { backgroundColor: "#f3f4f6" } }}>
+                  <TableCell>#</TableCell>
+                  <TableCell>Program</TableCell>
+                  <TableCell>Students With Violations</TableCell>
+                  <TableCell>Total Violations</TableCell>
+                </TableRow>
+              </TableHead>
+
+              <TableBody>
+                {preview.violationProgram.map((e, i) => (
+                  <TableRow key={i} sx={{ fontSize: "0.9em" }}>
+                    <TableCell>{i + 1}.</TableCell>
+                    <TableCell>{e.program}</TableCell>
+                    <TableCell>{e.students_with_violations}</TableCell>
+                    <TableCell>{e.total_violations}</TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </div>
 
@@ -136,12 +222,12 @@ const AnalyticalReport = (props) => {
         {/* Top Violators */}
 <div className="mb-8">
   <h2 className="text-[1.2em] mb-4 font-bold text-blue-700 flex items-center gap-2">
-    <i className="fa-solid fa-user-xmark text-blue-600"></i>
+    <UserX size="1em" className="text-blue-600" />
     Top 5 Violators
   </h2>
 
   <div className="space-y-3">
-    {props.top5Student.map((violator, index) => (
+    {preview.top5Student.map((violator, index) => (
       <div
         key={index}
         className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border border-gray-300 bg-white shadow-sm hover:shadow-md transition-shadow px-4 py-3 rounded-lg"
@@ -156,16 +242,16 @@ const AnalyticalReport = (props) => {
           <ProfilePic
             size={2.3}
             src={getProfilePic(
-              violator.user.profile_picture,
-              violator.user.sex
+              violator.user.profile?.profile_picture,
+              violator.user.profile?.sex
             )}
           />
 
           <div>
             <h1 className="text-[0.9em] font-semibold text-gray-900 leading-tight">
-              {`${violator.user.first_name} ${
-                violator.user.middle_name ? violator.user.middle_name + " " : ""
-              }${violator.user.last_name}`}
+              {`${violator.user.profile?.first_name ?? ""} ${
+                violator.user.profile?.middle_name ? violator.user.profile.middle_name + " " : ""
+              }${violator.user.profile?.last_name ?? ""}`}
             </h1>
 
             <p className="text-[0.75em] text-gray-500">

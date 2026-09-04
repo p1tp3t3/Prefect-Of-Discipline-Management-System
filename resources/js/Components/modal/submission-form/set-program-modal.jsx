@@ -1,9 +1,10 @@
 import UpModal from "../up-modal"
 import FormTextfield from "@/Components/input/form-input"
-import { change, showOutputModal, showWarningModal } from "@/others/function"
+import ProfilePicEdit from "@/Components/input/profile-pic-edit-input"
+import { change, fileChange, getProgramLogo, showOutputModal, showWarningModal } from "@/others/function"
 import { useState, useEffect } from "react"
 import FormButton from "@/Components/button/button"
-import { APIRequest } from "@/others/classes/api-req"
+import { ProgramService } from "@/others/services/program-service"
 
 const SetProgramModal = (props) => {
     const action = props.action || 'add'
@@ -14,7 +15,9 @@ const SetProgramModal = (props) => {
         name: '',
         description: '',
         color: '',
+        logo: null,
     })
+    const [preview, setPreview] = useState(null)
 
     const [validationErr, setValidationErr] = useState({
         name: "",
@@ -32,9 +35,15 @@ const SetProgramModal = (props) => {
                 name: editData.name || '',
                 description: editData.description || '',
                 color: editData.color_code || '',
+                logo: null,
             })
+            setPreview(null)
         }
     }, [action, editData])
+
+    const handleLogoChange = (e) => {
+        fileChange(e, setPreview, (file) => setData((prev) => ({ ...prev, logo: file })), true)
+    }
 
     const validate = () => {
         let err = {
@@ -69,10 +78,6 @@ const SetProgramModal = (props) => {
         e.preventDefault()
         if (!validate()) return
 
-        const url = action === 'add'
-            ? '/maintenance/program/create'
-            : `/maintenance/program/update`
-
         const loadingMsg = action === 'add'
             ? 'Creating New Program. Please Wait'
             : 'Updating Program. Please Wait'
@@ -88,12 +93,21 @@ const SetProgramModal = (props) => {
             () => {
                 props.reload(true, 'text-wait', loadingMsg)
 
-                const api = new APIRequest(url, 'post', data, props.setter,
+                // Built as real FormData (not the plain-object pattern used
+                // elsewhere) so the logo File actually transmits — axios
+                // only serializes multipart correctly from a FormData
+                // instance, not a plain object with a File property.
+                const formData = new FormData()
+                formData.append('id', data.id)
+                formData.append('name', data.name)
+                formData.append('description', data.description)
+                formData.append('color', data.color)
+                if (data.logo) formData.append('logo', data.logo)
+
+                ProgramService.save(action, formData, props.setter,
                     () => props.reload(true, 'success', successMsg),
                     (e) => props.reload(true, 'error', 'Failed. ' + (e?.response.data.message || ''))
                 )
-
-                api.fetchData()
             }
         )
     }
@@ -121,6 +135,17 @@ const SetProgramModal = (props) => {
                         </div>
 
                         <div className="grid gap-5">
+                            <div className="grid place-items-center">
+                                <ProfilePicEdit
+                                    preview={preview}
+                                    setPreview={setPreview}
+                                    profilePic={getProgramLogo(editData.logo)}
+                                    handleFileChange={handleLogoChange}
+                                    profileChange={(file) => setData((prev) => ({ ...prev, logo: file }))}
+                                    enableCrop={true}
+                                />
+                            </div>
+
                             <div className="grid gap-3">
 
                                 <FormTextfield

@@ -10,6 +10,8 @@ import {
   showUserType,
 } from "../../others/function";
 import AuthContext from "@/context-provider/auth-provider";
+import ListSkeleton from "../reload/list-skeleton";
+import { Folder } from "lucide-react";
 
 const AbsentFormRequestList = ({ list = null, events, noted = false }) => {
   const { usr } = useContext(AuthContext);
@@ -21,6 +23,7 @@ const AbsentFormRequestList = ({ list = null, events, noted = false }) => {
     return data.map((e, i) => ({
       id: e.id,
       index: i + 1,
+      form_number: e.form_number,
       student_id: e.user.id_number,
       user: e.user,
       created_at: e.created_at,
@@ -32,6 +35,7 @@ const AbsentFormRequestList = ({ list = null, events, noted = false }) => {
   const columns = useMemo(() => {
     const cols = [
       { field: "index", headerName: "#", width: 60 },
+      { field: "form_number", headerName: "Reference No.", width: 130 },
       { field: "student_id", width: 180, headerName: "Student ID" },
       {
         field: "student",
@@ -127,7 +131,7 @@ const AbsentFormRequestList = ({ list = null, events, noted = false }) => {
   if (!list) {
     return (
       <div className="flex justify-center items-center w-full py-10">
-        <CircleReload size={3} />
+        <ListSkeleton rows={4} />
       </div>
     );
   }
@@ -136,7 +140,7 @@ const AbsentFormRequestList = ({ list = null, events, noted = false }) => {
     return (
       <div className="flex justify-center items-center w-full py-10 text-gray-600 text-center">
         <div className="text-[4em]">
-          <i className="fa-solid fa-folder"></i>
+          <Folder size="1em" />
         </div>
         <div>No Absent Forms Found</div>
       </div>
@@ -144,17 +148,19 @@ const AbsentFormRequestList = ({ list = null, events, noted = false }) => {
   }
 
   return (
-    <Box sx={{ width: "100%", height: 550, p: 2, bgcolor: "white", borderRadius: 2 }}>
-      <DataGrid
-        rows={rows}
-        columns={columns}
-        pageSizeOptions={[5, 10, 25]}
-        pagination
-        disableRowSelectionOnClick
-        hideFooterSelectedRowCount
-        initialState={{ pagination: { paginationModel: { page: 0, pageSize: 10 } } }}
-        showToolbar
-      />
+    <Box sx={{ width: "100%", height: 550, p: 2, bgcolor: "white", borderRadius: 2, overflowX: "auto" }}>
+      <Box sx={{ minWidth: "900px" }}>
+        <DataGrid
+          rows={rows}
+          columns={columns}
+          pageSizeOptions={[5, 10, 25]}
+          pagination
+          disableRowSelectionOnClick
+          hideFooterSelectedRowCount
+          initialState={{ pagination: { paginationModel: { page: 0, pageSize: 10 } } }}
+          showToolbar
+        />
+      </Box>
     </Box>
   );
 };

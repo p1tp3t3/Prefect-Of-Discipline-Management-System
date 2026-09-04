@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import './style.css';
 import CircleReload from "../reload/circle-reload";
+import { Calendar as CalendarIcon, Eye } from "lucide-react";
 
 const AnchorModal = ({ open, anchorRef, containerRef, onClose, items }) => {
   const [pos, setPos] = useState(null);
@@ -83,7 +84,7 @@ const AnchorModal = ({ open, anchorRef, containerRef, onClose, items }) => {
                 onClick={item.onClick}
                 className="w-full text-left px-4 py-2.5 text-sm flex items-center gap-3 hover:bg-blue-700 hover:text-white transition-colors"
               >
-                <i className={`${item.icon} text-[15px]`} />
+                <item.icon size={15} />
                 {item.label}
               </button>
             ))}
@@ -194,12 +195,12 @@ return (
       items={[
         {
           label: "Schedule an Appointment",
-          icon: "fa-solid fa-calendar",
+          icon: CalendarIcon,
           onClick: () => { events[1]?.(selectedYMD); setModalOpen(false); }
         },
         {
           label: "View Scheduled Users",
-          icon: "fa-solid fa-eye",
+          icon: Eye,
           onClick: () => { events[0]?.(selectedYMD); setModalOpen(false); }
         }
       ]}

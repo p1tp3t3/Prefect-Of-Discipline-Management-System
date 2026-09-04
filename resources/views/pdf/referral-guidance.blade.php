@@ -78,7 +78,7 @@
             <h2>Referral Details</h2>
             <div class="info-group">
                 <span class="info-label">Reason:</span>
-                <span class="info-value">{{ $referral_reason }}</span>
+                <div class="info-value">{!! $referral_reason !!}</div>
             </div>
             <div class="info-group">
                 <span class="info-label">Referred By:</span>

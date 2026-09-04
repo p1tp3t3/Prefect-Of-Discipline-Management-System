@@ -1,5 +1,6 @@
 import { readableDate, readableTime, toTitleCase } from "@/others/function"
 import NotificationWrapper from "@/wrapper/notif-wrapper"
+import { FileText } from "lucide-react"
 
 
 
@@ -12,7 +13,7 @@ const GatePassNotif = ({ obj }) => {
     return (
         <>
             <div className={`h-[3rem] w-[3rem] flex-shrink-0 grid place-items-center rounded-full bg-blue-300/20 text-blue-600`}>
-                <i className={`fa-solid fa-file`}></i>
+                <FileText />
             </div>
             <div className="grid gap-2">
                 <div className="flex gap-2 items-center">

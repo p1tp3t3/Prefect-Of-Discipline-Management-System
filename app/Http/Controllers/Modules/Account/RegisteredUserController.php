@@ -41,14 +41,13 @@ class RegisteredUserController extends Controller
     public function index()
     {
         $student = new User();
-        $account = new AccountController();
 
         return Inertia::render("itrc/register", [
             'user' => auth()->user(),
             'authType' => auth()->user()->role,
             'student' => $student->getAllStudent(),
-            'program' => Program::select('id', 'description')->get(),
-            'program_name' => $account->isProgramHead()
+            'program' => Program::select('id', 'name', 'description')->get(),
+            'program_name' => is_program_head()
         ]);
     }
 
@@ -88,7 +87,7 @@ class RegisteredUserController extends Controller
                 foreach($parents as $parent) {
                     $parentId = self::generateParentId();
                     $name = $parent['first_name'] . ' ' . $parent['middle_name'] . ' ' . $parent['last_name'];
-                    $username = self::generateUsername(preg_replace('/\s+/', '', $parent['first_name']));
+                    $username = generate_username(preg_replace('/\s+/', '', $parent['first_name']));
                     $password = random_int(100000000, 999999999);
 
                     $updateParent = array_merge($parent,
@@ -276,7 +275,7 @@ class RegisteredUserController extends Controller
 
                     $user = User::create($userFields);
                     Profile::create(array_merge(['user_id' => $user->id], $profileFields));
-                    UserPermission::create(array_merge(['user_id' => $user->id], self::getUserAccessField([], $role)));
+                    UserPermission::create(array_merge(['user_id' => $user->id], get_user_access_field([], $role)));
 
                     Enrollment::create([
                         'student_id' => $user->id,
@@ -284,7 +283,7 @@ class RegisteredUserController extends Controller
                         'school_year' => $request->school_year,
                         'semester' => $request->semester ?? 1,
                         'year_level' => $yearLevel,
-                        'enrolled_at' => now(),
+                        'enrolled_at' => $request->enrolled_at ?? now(),
                     ]);
 
                     EducationBackground::insert([
@@ -352,7 +351,7 @@ class RegisteredUserController extends Controller
 
                     $user = User::create($userFields);
                     Profile::create(array_merge(['user_id' => $user->id], $profileFields));
-                    UserPermission::create(array_merge(['user_id' => $user->id], self::getUserAccessField([], $role)));
+                    UserPermission::create(array_merge(['user_id' => $user->id], get_user_access_field([], $role)));
 
                     TeachingStaff::create([
                         'user_id' => $user->id,
@@ -390,7 +389,7 @@ class RegisteredUserController extends Controller
 
                     $user = User::create($userFields);
                     Profile::create(array_merge(['user_id' => $user->id], $profileFields));
-                    UserPermission::create(array_merge(['user_id' => $user->id], self::getUserAccessField([], $role)));
+                    UserPermission::create(array_merge(['user_id' => $user->id], get_user_access_field([], $role)));
 
                     $row = [
                         $user->id_number,
@@ -416,13 +415,13 @@ class RegisteredUserController extends Controller
                 case 'sub_admin':
                     $user = User::create($userFields);
                     Profile::create(array_merge(['user_id' => $user->id], $profileFields));
-                    UserPermission::create(array_merge(['user_id' => $user->id], self::getUserAccessField([], $role)));
+                    UserPermission::create(array_merge(['user_id' => $user->id], get_user_access_field([], $role)));
                     break;
 
                 case 'parent':
                     $user = User::create($userFields);
                     Profile::create(array_merge(['user_id' => $user->id], $profileFields));
-                    UserPermission::create(array_merge(['user_id' => $user->id], self::getUserAccessField([], $role)));
+                    UserPermission::create(array_merge(['user_id' => $user->id], get_user_access_field([], $role)));
                     Parents::create([
                         'user_id' => $user->id,
                         'parent_role' => $request->parent_role,
@@ -432,7 +431,7 @@ class RegisteredUserController extends Controller
                 default:
                     $user = User::create($userFields);
                     Profile::create(array_merge(['user_id' => $user->id], $profileFields));
-                    UserPermission::create(array_merge(['user_id' => $user->id], self::getUserAccessField([], $role)));
+                    UserPermission::create(array_merge(['user_id' => $user->id], get_user_access_field([], $role)));
                     break;
             }
 
@@ -497,7 +496,7 @@ class RegisteredUserController extends Controller
         $request->validate(['file' => 'required|file']);
 
         $tmpPath = $request->file('file')->getRealPath();
-        $rows = $this->getUserDf($tmpPath);
+        $rows = get_user_df($tmpPath);
 
         $preview = [];
         foreach ($rows as $i => $row) {
@@ -594,7 +593,7 @@ class RegisteredUserController extends Controller
     public static function validateStudentCsvRow(array $row): array
     {
         $errors = [];
-        $required = ['id', 'first_name', 'middle_name', 'last_name', 'sex', 'email', 'program', 'year_level', 'school_year'];
+        $required = ['id', 'first_name', 'middle_name', 'last_name', 'sex', 'email', 'program', 'year_level', 'school_year', 'enrolled_at'];
 
         foreach ($required as $col) {
             if (!isset($row[$col]) || trim((string) $row[$col]) === '') {
@@ -603,8 +602,8 @@ class RegisteredUserController extends Controller
         }
 
         if (empty($errors)) {
-            if (!preg_match('/^[A-Za-z0-9]+$/', $row['id'])) {
-                $errors[] = 'Invalid ID format. Letters and numbers only.';
+            if (!preg_match('/^[Cc]\d+$/', $row['id'])) {
+                $errors[] = "Invalid ID format. Must start with 'C' followed by digits (e.g. C2210213).";
             }
             foreach (['first_name', 'middle_name', 'last_name'] as $nameField) {
                 if (!preg_match('/^[A-Za-z\s]+$/', trim($row[$nameField]))) {
@@ -617,14 +616,20 @@ class RegisteredUserController extends Controller
             if (!filter_var($row['email'], FILTER_VALIDATE_EMAIL)) {
                 $errors[] = 'Invalid email format.';
             }
-            if (!is_numeric($row['program']) || $row['program'] < 1 || $row['program'] > 7) {
-                $errors[] = 'Program must be 1–7.';
+            if (!Program::whereRaw('LOWER(name) = ?', [strtolower(trim($row['program']))])->exists()) {
+                $errors[] = 'Program must match an existing program name (e.g. BSIT, BEED, BSN).';
             }
             if (!is_numeric($row['year_level']) || $row['year_level'] < 1 || $row['year_level'] > 4) {
                 $errors[] = 'Year level must be 1–4.';
             }
             if (!preg_match('/^\d{4}-\d{4}$/', $row['school_year'])) {
                 $errors[] = 'school_year must be YYYY-YYYY.';
+            }
+            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $row['enrolled_at']) || !strtotime($row['enrolled_at'])) {
+                $errors[] = 'enrolled_at must be a valid date in YYYY-MM-DD format.';
+            }
+            if (isset($row['suffix']) && trim($row['suffix']) !== '' && !preg_match('/^[A-Za-z.\s]+$/', trim($row['suffix']))) {
+                $errors[] = "'suffix' must contain letters, periods, and spaces only.";
             }
         }
 
@@ -749,17 +754,6 @@ class RegisteredUserController extends Controller
     return $flatErrors;
 }
 
-    public function generateUsername($firstName) {
-        $firstName = trim($firstName);
-        return strtolower($firstName . random_int(100, 999));
-    }
-    public function getUserDf($filePath) {
-        $rows = array_map('str_getcsv', file($filePath));
-        $header = array_shift($rows);
-
-        return array_map(fn($row) => array_combine($header, $row), $rows);
-    }
-
     private function getUserField($request) {
         return [
             'id_number' => strtolower($request->id_number ?? ''),
@@ -775,51 +769,13 @@ class RegisteredUserController extends Controller
             'first_name' => ucwords($request->first_name),
             'middle_name' => ucwords($request->middle_name),
             'last_name' => ucwords($request->last_name),
+            'suffix' => (empty($request->suffix)) ? NULL : $request->suffix,
             'date_of_birth' => NULL,
             'civil_status' => 'single',
             'profile_picture' => NULL,
             'sex' => ($request->sex != NULL) ? $request->sex : 'm',
             'contact_number' => (empty($request->contact_number)) ? NULL : $request->contact_number,
         ];
-    }
-    public function getUserAccessField($data = null, $type) {
-        switch($type) {
-            case 'student':
-                return array_merge($data, [
-                    'allow_complaint' => 1,
-                    'allow_absent_form' => 1,
-                    'allow_appointment' => 1,
-                    'allow_gatepass' => 1,
-                ]);
-            case 'super_admin':
-                return array_merge($data, [
-                    'allow_complaint' => 1,
-                    'allow_gatepass' => 1,
-                ]);
-            case 'non_teaching_staff':
-                return array_merge($data, [
-                    'allow_complaint' => 1,
-                    'allow_gatepass' => 1,
-                ]);
-            case 'teaching_staff':
-                return array_merge($data, [
-                    'allow_complaint' => 1,
-                    'allow_gatepass' => 1,
-                ]);
-            case 'parent':
-                return array_merge($data, [
-                    'allow_complaint' => 1,
-                    'allow_appointment' => 1,
-                ]);
-            default:
-                return array_merge($data, [
-                    'allow_complaint' => 1,
-                    'allow_referral' => 1,
-                    'allow_absent_form' => 1,
-                    'allow_appointment' => 1,
-                    'allow_gatepass' => 1,
-                ]);
-        }
     }
     public function getParentAndStudent() {
         $parentList = User::whereNotIn('id', FamilyMember::pluck('member_id'))

@@ -1,6 +1,7 @@
 import AlertModal from "../alert-modal"
 
 const NormalValidationModal = (props) => {
+    const Icon = props.icon
     return (
         <AlertModal
             close={props.close}
@@ -12,9 +13,9 @@ const NormalValidationModal = (props) => {
             <div className="w-full">
                 <div className="grid gap-3">
                     <div className="justify-self-center text-center">
-                        {(props.icon != null) &&
+                        {(Icon != null) &&
                         <div>
-                            <i className={`fa-solid ${props.icon} text-[4.5em]`}></i>
+                            <Icon size="4.5em" />
                         </div>}
                         {props.title != null &&
                         <h1 className="text-center text-[2em]">

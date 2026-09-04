@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react"
 import AlertModal from "../alert-modal"
 import shield from '@/images/shield.png'
-import { APIRequest } from "@/others/classes/api-req"
+import { AuthService } from "@/others/services/auth-service"
 import ActionBtn from "@/Components/button/action-btn"
 
 const OtpModal = (props) => {
@@ -59,20 +59,7 @@ const Body = (props) => {
      * 📩 Send OTP to backend
      * -------------------------------------------------------- */
     const sendOtp = (otp) => {
-        const api = new APIRequest(
-            "/forgot-password/otp",
-            "post",
-            { 
-                pin: otp, 
-                username: props.username, 
-                email: props.contact.email,
-                type: props.type != null ? props.type : 'email'
-            },
-            () => {},
-            () => {},
-            () => {}
-        );
-        api.sendPostData();
+        AuthService.sendOtp(otp, props.username, props.contact.email, props.type, () => {}, () => {});
     };
 
     useEffect(() => {
@@ -95,11 +82,7 @@ const Body = (props) => {
             return resetFields();
         }
         
-        const api = new APIRequest('/otp/verify', 'post', {
-            pin: value,
-            email: props.contact.email
-        }, null, () => props.proceedEvent(value), () => setError("O.T.P does not match"))
-        api.sendPostData()
+        AuthService.verifyOtp(value, props.contact.email, () => props.proceedEvent(value), () => setError("O.T.P does not match"))
         resetFields();
     };
 
@@ -157,12 +140,16 @@ const Body = (props) => {
     };
 
     const getContact = () => {
-        return props.contact.email ?? props.contact.phone_number;
+        return props.contact?.email || props.contact?.contact_number || "";
     };
 
-    const maskEmail = (email) => {
-        const [local, domain] = email.split("@");
-        return `${local[0]}${local[1]}****@${domain}`;
+    const maskEmail = (value) => {
+        if (!value) return "your registered contact";
+        if (!value.includes("@")) {
+            return `${"*".repeat(Math.max(value.length - 2, 0))}${value.slice(-2)}`;
+        }
+        const [local, domain] = value.split("@");
+        return `${local[0] ?? ""}${local[1] ?? ""}****@${domain ?? ""}`;
     };
 
     return (

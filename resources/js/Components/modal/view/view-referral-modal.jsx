@@ -1,4 +1,4 @@
-import { APIRequest } from "@/others/classes/api-req"
+import { ReferralService } from "@/others/services/referral-service"
 import UpModal from "../up-modal"
 import { useEffect, useState } from "react"
 import SelectedUser from "@/Components/other/selected-user"
@@ -21,9 +21,7 @@ const ViewReferralModal = (props) => {
     }, [props.close])
 
     const getReferralInfo = () => {
-        const id = props.referralId
-        const api = new APIRequest(`/referral/get/${id}`, 'post', {}, setData, ()=>{}, ()=>{})
-        api.fetchData()
+        ReferralService.getReferralInfo(props.referralId, setData)
     }
 
     return (
@@ -55,6 +53,10 @@ const Body = ({ data }) => {
         <div className="space-y-6">
             <div className="text-center">
                 <h1 className="text-2xl font-bold">{toTitleCase(data.user.profile?.first_name)}'s Referral</h1>
+            </div>
+            <div>
+                <h2 className="text-lg font-semibold">Reference No.</h2>
+                <p className="text-sm">{data.referral_number}</p>
             </div>
             <div>
                 <h2 className="text-lg font-semibold">Reported Since</h2>

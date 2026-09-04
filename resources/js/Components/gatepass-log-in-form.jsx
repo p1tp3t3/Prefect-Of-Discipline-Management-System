@@ -4,6 +4,7 @@ import header from '../images/pilar.png'
 import { useForm } from "@inertiajs/react"
 import { change } from "../others/function"
 import { useRoute } from "../../../vendor/tightenco/ziggy/src/js"
+import { User, Lock } from "lucide-react"
 
 
 const GatePassLogInForm = (props) => {
@@ -17,10 +18,10 @@ const GatePassLogInForm = (props) => {
 
     const handleSubmit = (e) => {
         e.preventDefault()
-        setReload(true)
+        props.loadRegister(true, 'logo')
         setTimeout(() => {
             post(route('log-in'), {
-                onError: () => props.setReload(false)            
+                onError: () => props.loadRegister(false)
             })
         }, 3000)
     }
@@ -28,7 +29,7 @@ const GatePassLogInForm = (props) => {
         change(e, setData)
     }
     return (
-        <div className={`w-[26rem] p-[40px] pr-[50px] pl-[50px] bg-[#ffffff] rounded-[5px] frm`}>
+        <div className={`w-full max-w-[26rem] mx-4 p-[24px] sm:p-[40px] sm:pr-[50px] sm:pl-[50px] bg-[#ffffff] rounded-[5px] frm`}>
             <form className="flex flex-col gap-10" onSubmit={handleSubmit} method="post">
                 <div className="w-[100%] grid place-items-center">
                     <div className="grid place-items-center">
@@ -48,7 +49,7 @@ const GatePassLogInForm = (props) => {
                             val={data.username}
                             error={errors.username}
                             change={handleChange} 
-                            icon="fa-solid fa-user"
+                            icon={User}
                             req={true}
                             color={{ border: 'border-blue-700', bg: 'bg-gray-200' }} />
                         <FormTextfield 
@@ -59,7 +60,7 @@ const GatePassLogInForm = (props) => {
                             val={data.password}
                             error={errors.password}
                             change={handleChange} 
-                            icon="fa-solid fa-lock" 
+                            icon={Lock}
                             req={true}
                             color={{ border: 'border-blue-700', bg: 'bg-gray-200' }} />
                     </div>

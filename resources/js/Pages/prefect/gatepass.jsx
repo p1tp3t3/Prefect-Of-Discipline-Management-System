@@ -3,12 +3,13 @@ import RequestGatePassModal from "@/Components/modal/submission-form/request-gat
 import { useState } from "react"
 import GatePassRequestList from "@/Components/list/gatepass-request-list"
 import GatePassList from "@/Components/list/gate-pass-list"
-import Reload from "@/Components/reload/reload"
-import TabBtn from "@/Components/button/tab-btn"
-import { APIRequest } from "@/others/classes/api-req"
+import { useReload } from "@/context-provider/reload-provider"
+import TabSwitcher from "@/Components/other/tab-switcher"
+import { GatePassService } from "@/others/services/gatepass-service"
 import ViewGatePassModal from "@/Components/modal/view/view-gatepass-modal"
 import { router } from "@inertiajs/react"
 import { showOutputModal, showWarningModal } from "@/others/function"
+import { List, CheckCircle2, XCircle } from "lucide-react"
 
 const PrefectGatePass = (props) => {
     const url = new URLSearchParams(window.location.search)
@@ -17,9 +18,7 @@ const PrefectGatePass = (props) => {
     const [lstOption, setLstOption] = useState(url.has("status") ? url.get("status") : "req-current")
     const [gatepassRequestList, setGatePassRequestList] = useState(props.gatepass_request_list)
     const [gatepassList, setGatePassList] = useState([])
-    const [reload, setReload] = useState(false)
-    const [reloadType, setReloadType] = useState("")
-    const [reloadLabel, setReloadLabel] = useState("")
+    const { loadRegister } = useReload()
     const [id, setGatePassId] = useState("")
     const [approved, setApprove] = useState(false)
 
@@ -29,33 +28,9 @@ const PrefectGatePass = (props) => {
     })
 
     const optionTab = [
-    {
-      val: "req-current",
-      label: "Current Requests",
-      icon: "list", // 📋 icon
-      colorHighlight: "bg-blue-600 text-white",
-      borderColor: "border-blue-600",
-      textColor: "text-blue-600",
-      hover: "hover:bg-blue-100",
-    },
-    {
-      val: "confirmed-users",
-      label: "Accepted Users",
-      icon: "circle-check", // ⏸️ icon
-      colorHighlight: "bg-green-500 text-white",
-      borderColor: "border-green-500",
-      textColor: "text-green-500",
-      hover: "hover:bg-green-100",
-    },
-    {
-      val: "expired-users",
-      label: "Expired Gate Pass",
-      icon: "circle-xmark", // ⏸️ icon
-      colorHighlight: "bg-red-500 text-white",
-      borderColor: "border-red-500",
-      textColor: "text-red-500",
-      hover: "hover:bg-red-100",
-    }
+      { key: "req-current", label: "Current Requests", icon: List },
+      { key: "confirmed-users", label: "Accepted Users", icon: CheckCircle2 },
+      { key: "expired-users", label: "Expired Gate Pass", icon: XCircle },
     ]
     const handleOption = (e) => {
         setLstOption(e)
@@ -66,7 +41,7 @@ const PrefectGatePass = (props) => {
     }
 
     const setEvents = (i, type, status) => {
-        let route = "",
+        let action = "",
             confirmTxt = "",
             confirm = false,
             label = "",
@@ -79,13 +54,13 @@ const PrefectGatePass = (props) => {
                 setApprove(true)
                 break
             case "cancel":
-                route = `/gatepass/verify/${i}/cancel`
+                action = "cancel"
                 confirmTxt = "Canceling the Gate Pass"
                 label = "Are You Sure You Want To Reject This Gate Pass Request?"
                 btn = "Reject Gate Pass Request"
                 break
             case "confirm-allow-to":
-                route = `/gatepass/verify/${i}/confirm`
+                action = "confirm"
                 confirmTxt = "Comfirming the Gate Pass"
                 label = "Are You Sure You Want To Approve This Gate Pass Request?"
                 btn = "Approve Gate Pass Request"
@@ -96,18 +71,17 @@ const PrefectGatePass = (props) => {
                 break
         }
 
-        if (route !== "" && (type === "confirm-allow-to" || type === "cancel")) {
+        if (action !== "" && (type === "confirm-allow-to" || type === "cancel")) {
             showWarningModal(label, btn, "Cancel", () => {
                 loadRegister(true, "text-wait", confirmTxt)
-                const api = new APIRequest(
-                    `/prefect${route}`,
-                    "post",
+                GatePassService.verify(
+                    action,
+                    i,
                     status,
                     setGatePassRequestList,
                     confirm ? successApprove : successDisapprove,
                     confirm ? errorApprove : errorDisapprove
                 )
-                api.fetchData()
             })
         }
     }
@@ -149,13 +123,6 @@ const PrefectGatePass = (props) => {
         )
     }
 
-    const loadRegister = (r, t, l) => {
-        setReload(r)
-        setReloadType(t)
-        setReloadLabel(l)
-    }
-    const isReload = () => (reload ? "opacity-1 z-50" : "opacity-0 z-[-1]")
-
     const setId = (i) => {
         openViewGatePass(true)
         setGatePassId(i)
@@ -163,12 +130,6 @@ const PrefectGatePass = (props) => {
 
     return (
         <>
-            <Reload
-                transition={isReload()}
-                type={reloadType}
-                label={reloadLabel}
-                onClose={setReload}
-            />
 
             <ViewGatePassModal
                 close={viewGatePass}
@@ -198,12 +159,7 @@ const PrefectGatePass = (props) => {
                         </div>
                         {/* Tabs */}
                         <div className="w-full overflow-x-auto">
-                            <TabBtn
-                                list={optionTab}
-                                option={lstOption}
-                                handleSelect={handleOption}
-                                className="h-[2.2rem]"
-                            />
+                            <TabSwitcher tabs={optionTab} value={lstOption} onChange={handleOption} />
                         </div>
 
                         {/* Table / List Section */}

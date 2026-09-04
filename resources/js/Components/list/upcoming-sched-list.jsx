@@ -1,4 +1,5 @@
 import { readableDate, readableTime } from "../../others/function";
+import { CalendarX, CalendarClock, Info } from "lucide-react";
 
 const AppointmentScheduleList = ({ list = [], showAction = false, events = () => {} }) => {
     return (
@@ -26,7 +27,7 @@ const AppointmentScheduleList = ({ list = [], showAction = false, events = () =>
                     <div className="text-[1em] text-gray-500 w-full grid place-items-center h-full">
                         <div className="grid place-items-center">
                             <div className="text-[3.5em] text-gray-400 mb-2">
-                                <i className="fa-solid fa-calendar-xmark"></i>
+                                <CalendarX size="1em" />
                             </div>
                             <div className="text-gray-600">No Appointments Yet</div>
                         </div>
@@ -47,7 +48,7 @@ const Row = ({ data, showAction, events }) => {
                 <div className="flex justify-between items-start">
                     <div className="flex gap-3 items-center">
                         <div className="text-[#1E3A8A] text-xl">
-                            <i className="fa-solid fa-calendar-day"></i>
+                            <CalendarClock size="1em" />
                         </div>
 
                         <div>
@@ -66,7 +67,7 @@ const Row = ({ data, showAction, events }) => {
                             onClick={() => events("view", data.id)}
                             className="text-[#1E3A8A] hover:text-[#162d66] text-lg"
                         >
-                            <i className="fa-solid fa-circle-info"></i>
+                            <Info size="1em" />
                         </button>
                     )}
                 </div>

@@ -76,20 +76,22 @@ const ParentRequestList = ({ list = null, paginate = true, event }) => {
 
   return (
     <Box
-      className={"w-full px-5 py-3 bg-white rounded-md shadow-black/20 shadow-sm"}
+      className={"w-full px-5 py-3 bg-white rounded-md shadow-black/20 shadow-sm overflow-x-auto"}
       sx={{ width: "100%" }}
     >
-      <DataGrid
-        rows={rows}
-        columns={columns}
-        disableRowSelectionOnClick
-        hideFooterSelectedRowCount
-        pagination
-        pageSizeOptions={[20, 50, 100, 200]}
-        initialState={{ pagination: { paginationModel: { page: 0, pageSize: 20 } } }}
-        showToolbar
-        getRowId={(row) => row.id}
-      />
+      <Box sx={{ minWidth: "900px" }}>
+        <DataGrid
+          rows={rows}
+          columns={columns}
+          disableRowSelectionOnClick
+          hideFooterSelectedRowCount
+          pagination
+          pageSizeOptions={[20, 50, 100, 200]}
+          initialState={{ pagination: { paginationModel: { page: 0, pageSize: 20 } } }}
+          showToolbar
+          getRowId={(row) => row.id}
+        />
+      </Box>
     </Box>
   );
 };

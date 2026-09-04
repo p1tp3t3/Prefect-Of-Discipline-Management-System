@@ -1,14 +1,12 @@
-import { APIRequest } from "@/others/classes/api-req"
+import { TransactionService } from "@/others/services/transaction-service"
 import { useEffect, useState } from "react"
-import CircleReload from "../reload/circle-reload"
+import ListSkeleton from "../reload/list-skeleton"
 
 const PendingRequestList = ({ type }) => {
     const [status, setStatus] = useState(null)
 
     useEffect(() => {
-        const api = new APIRequest('/transaction/status', 'get')
-        api.setSetter(setStatus)
-        api.fetchData()
+        TransactionService.getStatus(setStatus)
     }, [])
         console.log(status)
 
@@ -65,7 +63,7 @@ const PendingRequestList = ({ type }) => {
                 </div>
                 :
                 <div className="w-full h-full grid place-items-center">
-                    <CircleReload size={3} />
+                    <ListSkeleton rows={4} />
                 </div>}
             </div>       
         </div>

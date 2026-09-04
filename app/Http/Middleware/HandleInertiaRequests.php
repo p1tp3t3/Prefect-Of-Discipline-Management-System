@@ -3,7 +3,6 @@
 namespace App\Http\Middleware;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -30,12 +29,29 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        // Each page controller passes its own, more detailed "user" prop
+        // for whatever that page needs — but many of them build it as a
+        // bare auth()->user() without eager-loading `profile`, which left
+        // the sidebar/header/account-panel name and picture blank
+        // depending on which page happened to be open. Those three always
+        // read from here now instead, so the identity display no longer
+        // depends on every controller remembering to load the relation.
+        $user = $request->user()?->load(['profile', 'teachingStaff']);
+
         return [
             ...parent::share($request),
             'auth' => [
-                'user' => $request->user()?->load(['profile', 'permissions', 'program', 'enrollments', 'teachingStaff', 'parent']),
+                'user' => $user ? [
+                    'id' => $user->id,
+                    'username' => $user->username,
+                    'role' => $user->role,
+                    'profile' => $user->profile,
+                    'teaching_staff' => $user->teachingStaff,
+                ] : null,
             ],
-            'app_name' => Cache::get('app_name', config('app.name')),
+            'app_name' => config('app.name'),
+            'force_account_setup' => (bool) session('force_account_setup'),
+            'vapid_public_key' => config('webpush.vapid.public_key'),
         ];
     }
 }

@@ -3,6 +3,8 @@ from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.pipeline import Pipeline
 from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, roc_auc_score, classification_report
 import joblib
 import numpy as np
 
@@ -43,19 +45,50 @@ class EarlyInterventionViolationPredictor:
         X = df[cat_cols + num_cols].copy()
         y = df[target].astype(int).copy()
 
-        preprocess = ColumnTransformer(
-            transformers=[
-                ("num", StandardScaler(), num_cols),
-                ("cat", OneHotEncoder(handle_unknown="ignore"), cat_cols),
-            ],
-            remainder="drop",
-        )
+        def build_pipeline():
+            preprocess = ColumnTransformer(
+                transformers=[
+                    ("num", StandardScaler(), num_cols),
+                    ("cat", OneHotEncoder(handle_unknown="ignore"), cat_cols),
+                ],
+                remainder="drop",
+            )
+            return Pipeline(steps=[
+                ("preprocess", preprocess),
+                ("clf", LogisticRegression())
+            ])
 
-        model = Pipeline(steps=[
-            ("preprocess", preprocess),
-            ("clf", LogisticRegression())
-        ])
-        
+        # Held-out evaluation first — the model previously had no validation
+        # step at all (fit straight on 100% of the data), so there was no
+        # way to know its real accuracy short of testing it by hand.
+        self.last_eval = None
+        if len(df) >= 20 and y.nunique() > 1:
+            Xtr, Xte, ytr, yte = train_test_split(
+                X, y, test_size=0.25, random_state=42, stratify=y
+            )
+            eval_model = build_pipeline()
+            eval_model.fit(Xtr, ytr)
+            pred = eval_model.predict(Xte)
+            proba = eval_model.predict_proba(Xte)[:, 1]
+
+            self.last_eval = {
+                "accuracy": float(accuracy_score(yte, pred)),
+                "roc_auc": float(roc_auc_score(yte, proba)),
+                "test_size": int(len(yte)),
+            }
+            print(
+                f"[eval] held-out accuracy={self.last_eval['accuracy']:.4f} "
+                f"roc_auc={self.last_eval['roc_auc']:.4f} "
+                f"(n={self.last_eval['test_size']})"
+            )
+            print(classification_report(yte, pred))
+        else:
+            print('[eval] skipped: not enough rows/class variety for a held-out split')
+
+        # Final model deployed for predict()/get_insights() is fit on ALL
+        # available data — the split above is only for reporting how well
+        # it's likely to generalize, not for holding data back from it.
+        model = build_pipeline()
         model.fit(X, y)
         self.model = model
         print('model trained successfully')

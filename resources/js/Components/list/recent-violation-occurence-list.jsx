@@ -1,14 +1,20 @@
 import { useEffect, useState } from "react";
-import CircleReload from "../reload/circle-reload";
-import { APIRequest } from "@/others/classes/api-req";
+import ListSkeleton from "../reload/list-skeleton";
+import { ViolationService } from "@/others/services/violation-service";
 
-const RecentViolationOccurenceList = ({ user_id }) => {
-    const [list, setList] = useState(null);
+const RecentViolationOccurenceList = ({ user_id, list: listProp = null }) => {
+    const [list, setList] = useState(listProp);
 
     useEffect(() => {
-        const api = new APIRequest(`/violation-occurence/list/${user_id}`, "get", null, setList);
-        api.fetchData();
-    }, []);
+        // The profile controller now passes the occurrence list down as a
+        // prop; only fall back to the API call when none is given.
+        if (listProp != null) {
+            setList(listProp);
+            return;
+        }
+
+        ViolationService.getViolationOccurrenceList(user_id, setList);
+    }, [user_id, listProp]);
 
     return (
         <div className="w-full grid gap-5">
@@ -17,7 +23,7 @@ const RecentViolationOccurenceList = ({ user_id }) => {
                 {/* LOADING */}
                 {list === null && (
                     <div className="w-full h-[20rem] grid place-items-center">
-                        <CircleReload size={4} />
+                        <ListSkeleton rows={4} />
                     </div>
                 )}
 

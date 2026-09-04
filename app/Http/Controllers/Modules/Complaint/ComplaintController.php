@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Modules\Complaint;
 use App\Events\SendComplaint;
 use App\Events\SendComplaintConfirmation;
 use App\Http\Controllers\Controller;
-use App\Http\Controllers\Modules\Account\AccountController;
-use App\Http\Controllers\NotificationController;
+use App\Http\Requests\Complaint\BulkComplaintActionRequest;
+use App\Http\Requests\Complaint\CancelComplaintRequest;
+use App\Http\Requests\Complaint\StoreComplaintRequest;
+use App\Http\Resources\ComplaintResource;
 use App\Models\ActionLog;
 use App\Models\Complaint;
 use App\Models\ComplaintSubject;
@@ -29,8 +31,6 @@ class ComplaintController extends Controller
     use GeneratesSequenceCode;
 
     public function index() {
-        $account = new AccountController();
-
         $prefect = (!self::isPrefect()) ? 'other' : 'prefect';
         $complaints = self::isPrefect()
                     ? self::allComplaints()
@@ -39,11 +39,11 @@ class ComplaintController extends Controller
             'user' => auth()->user(),
             'program' => Program::latest('id')
                                 ->get(['id', 'name']),
-            'students' => User::with('program')
+            'students' => User::with(['profile', 'program'])
                             ->where('role', 'student')
                             ->where('id', '!=', auth()->user()->id)
                             ->get(),
-            'program_name' => $account->isProgramHead(),
+            'program_name' => is_program_head(),
             'complaint_list' => $complaints,
             'incident_list' => Violation::select([DB::raw('id AS val'), DB::raw('violation_name AS label')])->get(),
         ];
@@ -62,7 +62,7 @@ class ComplaintController extends Controller
 
         return Inertia::render("$prefect/complaint", $props);
     }
-    public function store(Request $request) {
+    public function store(StoreComplaintRequest $request) {
         DB::beginTransaction(); // start transaction
         try {
             $isPrefect = self::isPrefect();
@@ -72,7 +72,6 @@ class ComplaintController extends Controller
                     : asset("default-pic/profile-" . ($complainant?->profile?->sex === 'f' ? 'f' : 'm') . "-pic.jpg");
             $prefect = User::where('role', 'sub_admin')
                                     ->where('activate', true);
-            $notification  = new NotificationController();
             $lastIndex = null;
 
             if (auth()->user()->permissions?->allow_complaint != 1)
@@ -102,7 +101,7 @@ class ComplaintController extends Controller
                     'url' => url('/prefect/complaint'),
                 ];
 
-                $notification->notifySingleUser(
+                notify_single_user(
                     $complaintNotifField,
                     $webpushNotif,
                     new SendComplaint($prefect->id)
@@ -135,7 +134,7 @@ class ComplaintController extends Controller
                             'url' => url('/complaints'),
                         ];
 
-                        $notification->notifySingleUser(
+                        notify_single_user(
                             $complaintNotifField,
                             $webpushNotif
                         );
@@ -252,7 +251,6 @@ class ComplaintController extends Controller
         $count = Complaint::select('case_number')->whereNotNull('case_number')->latest('case_number')->value('case_number') + 1;
         $complaint = self::getComplaintNotifMessageResponseFields($complaint);
         $complaintNotifField = self::getComplaintNotifMessageResponseFields($complaint2);
-        $notification = new NotificationController();
 
 
         Complaint::where('id', $id)
@@ -261,7 +259,7 @@ class ComplaintController extends Controller
                         'confirmed_at' => DB::raw('NOW()'),
                         'complaint_status' => 'ongoing'
                  ]);
-        $notification->notifySingleUser(
+        notify_single_user(
             $complaintNotifField,
             $webpushNotif,
             new SendComplaintConfirmation(self::getSentComplaints())
@@ -283,7 +281,7 @@ class ComplaintController extends Controller
     }
 
 
-    public function cancelComplaint(Request $request, $id) {
+    public function cancelComplaint(CancelComplaintRequest $request, $id) {
 
         DB::beginTransaction();
         try {
@@ -299,7 +297,6 @@ class ComplaintController extends Controller
             $complaint = $complaint->first();
             $complainantName = $complaint->user->profile?->first_name;
             $complaintNotifField = self::getComplaintNotifMessageResponseFields($complaint, 'rejected');
-            $notification = new NotificationController();
             $webpushNotif = [
                 'title' => "Complaint Report!!!",
                 'body' => "Your Complaint Against {$complaint->subject->profile?->first_name} {$complaint->subject->profile?->last_name} Has Been Rejected",
@@ -308,7 +305,7 @@ class ComplaintController extends Controller
             ];
 
 
-            $notification->notifySingleUser(
+            notify_single_user(
                 $complaintNotifField,
                 $webpushNotif,
                 new SendComplaintConfirmation(self::getSentComplaints())
@@ -329,18 +326,13 @@ class ComplaintController extends Controller
     }
 
 
-    public function actionMultipleSelect(Request $request)
+    public function actionMultipleSelect(BulkComplaintActionRequest $request)
     {
         $ids = $request->ids; // array of complaint IDs
-
-        if (!$ids || !is_array($ids) || count($ids) === 0) {
-            return response()->json(['message' => 'No complaints selected'], 400);
-        }
 
         DB::beginTransaction();
 
         try {
-            $notification = new NotificationController();
             $action = $request->action;
             $processedCount = 0; // number of successfully processed complaints
             $userNames = [];     // list of complainant first names for log usage
@@ -369,7 +361,7 @@ class ComplaintController extends Controller
                             'url'   => url('/complaints')
                         ];
 
-                        $notification->notifySingleUser(
+                        notify_single_user(
                             self::getComplaintNotifMessageResponseFields($complaint),
                             $webpushNotif,
                         );
@@ -405,7 +397,7 @@ class ComplaintController extends Controller
                             'url'   => url('/complaints')
                         ];
 
-                        $notification->notifySingleUser(
+                        notify_single_user(
                             self::getComplaintNotifMessageResponseFields($complaint, 'rejected'),
                             $webpushNotif,
                         );
@@ -506,7 +498,7 @@ class ComplaintController extends Controller
                 :
                 $data->latest('confirmed_at');
 
-        return ['data' => $data->get()];
+        return ['data' => ComplaintResource::collection($data->get())];
     }
     public function allUserComplaint() {
         $data = Complaint::where('complainant_id', auth()->user()->id);
@@ -520,7 +512,7 @@ class ComplaintController extends Controller
         }
 
 
-        return ['data' => $data->get()];
+        return ['data' => ComplaintResource::collection($data->get())];
     }
     public function isPrefect() {
         return (auth()->user()->role == 'sub_admin');
@@ -569,12 +561,9 @@ class ComplaintController extends Controller
                 'complaint_text' => $complaint->complaint_description
             ]);
             $predictions = $api->successful() ? $api->json() : [];
-            $complaint = array_merge(
-                $complaint->toArray(),
-                ['context_analysis' => $predictions['data'] ?? []]
-            );
+            $complaint->context_analysis = $predictions['data'] ?? [];
         }
-        return $complaint;
+        return new ComplaintResource($complaint);
     }
     private function getComplaintInsertFields($request, $isPrefect)
     {

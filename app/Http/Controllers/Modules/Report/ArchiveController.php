@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Modules\Report;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Modules\Complaint\ComplaintController;
 use App\Http\Controllers\Modules\Referral\ReferralController;
-use App\Http\Controllers\NotificationController;
+use App\Http\Requests\Archive\DestroyDocumentRequest;
+use App\Http\Requests\Archive\RecoverDocumentRequest;
+use App\Http\Resources\ArchivedDocumentResource;
 use App\Mail\AbsentFormMail;
 use App\Models\Absence;
 use App\Models\Complaint;
@@ -31,7 +33,7 @@ class ArchiveController extends Controller
         $getUpdatedList = self::iterateDocument($request, 'archive');
         return response()->json($getUpdatedList);
     }
-    public function destroy(Request $request) {
+    public function destroy(DestroyDocumentRequest $request) {
         $id = $request->id;
         $doc = null;
 
@@ -101,7 +103,7 @@ class ArchiveController extends Controller
         }
         return $getUpdatedList;
     }
-    public function recoverDocument(Request $request) {
+    public function recoverDocument(RecoverDocumentRequest $request) {
         if($request->type == 'complaint') {
             // Safely get the latest case number
             $lastCaseNumber = Complaint::whereNotNull('case_number')
@@ -118,14 +120,13 @@ class ArchiveController extends Controller
             ]);
             $complaint = Complaint::with('user.profile')->where('id', $request->id)->first();
 
-            $notification = new NotificationController();
             $webpushNotif = [
                 'title' => 'Complaint Recovered',
                 'body'  => 'Your complaint has been recovered from archive and is now ongoing.',
                 'url'   => '/student/complaint/view/' . $complaint->id,
             ];
 
-            $notification->notifySingleUser(
+            notify_single_user(
                 [
                     'sender_id'   => auth()->user()->id,
                     'receiver_id' => $complaint->user->id,
@@ -372,7 +373,7 @@ class ArchiveController extends Controller
             );
         }
 
-        return $paginated;
+        return ArchivedDocumentResource::collection($paginated);
     }
     public function matchStudentSearch($user, $search, $parts)
     {

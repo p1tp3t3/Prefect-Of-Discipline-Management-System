@@ -3,7 +3,12 @@
 namespace App\Http\Controllers\Modules\Appointment;
 
 use App\Http\Controllers\Controller;
-use App\Http\Controllers\NotificationController;
+use App\Http\Requests\Appointment\AppointmentActionRequest;
+use App\Http\Requests\Appointment\CancelAppointmentRequest;
+use App\Http\Requests\Appointment\StoreAppointmentRequest;
+use App\Http\Requests\Appointment\UpdateAppointmentRequest;
+use App\Http\Requests\Appointment\UpdateAppointmentSlotRequest;
+use App\Http\Resources\AppointmentResource;
 use App\Mail\AppointmentMail;
 use App\Models\ActionLog;
 use App\Models\Appointment;
@@ -26,18 +31,70 @@ class AppointmentController extends Controller
         $isPrefect = (auth()->user()->role == 'sub_admin') ? 'prefect' : 'other';
         $props = [
             'user' => auth()->user(),
-            'appointment_list' => self::getAppointment($request),
-            'user_upcoming_appointment' => (auth()->user()->role != 'sub_admin') ? self::getUpcomingAppointmentList(auth()->user()->id) : null
         ];
         if(auth()->user()->role == 'sub_admin') {
             $props = array_merge($props, [
                 'appointment_request_list' => null,
                 'student_parent_list' => User::with('profile')->whereIn('role', ['student', 'parent'])->get()
             ]);
+        } else {
+            $props = array_merge($props, [
+                'appointment_history' => self::getAppointmentHistory(auth()->user()->id),
+                'call_in_history' => self::getCallInHistory(auth()->user()->id),
+            ]);
         }
         return Inertia::render("$isPrefect/appointment2",  $props);
     }
-    public function updateAppointmentSlot(Request $request) {
+
+    /**
+     * Every appointment notification (schedule + reschedule, whatever its
+     * accept status) ever sent to $userId — a full history, not just
+     * upcoming/pending, for the student-facing "My Appointments" list.
+     */
+    private function getAppointmentHistory($userId)
+    {
+        return Notifications::where('notif_type', 'appointment')
+            ->where('receiver_id', $userId)
+            ->latest('created_at')
+            ->get()
+            ->map(function ($n) {
+                $content = json_decode($n->content, true) ?? [];
+
+                return [
+                    'id' => $n->id,
+                    'type' => $content['type'] ?? 'sched',
+                    'date_appoint' => $content['date_appoint'] ?? null,
+                    'time_appoint' => $content['time_appoint'] ?? null,
+                    'reason' => $content['reason'] ?? null,
+                    'accept' => array_key_exists('accept', $content) ? $content['accept'] : null,
+                    'created_at' => $n->created_at,
+                ];
+            })
+            ->values();
+    }
+
+    /**
+     * Every call-in notification ever sent to $userId, for the same
+     * student-facing history list.
+     */
+    private function getCallInHistory($userId)
+    {
+        return Notifications::where('notif_type', 'call_in')
+            ->where('receiver_id', $userId)
+            ->latest('created_at')
+            ->get()
+            ->map(function ($n) {
+                $content = json_decode($n->content, true) ?? [];
+
+                return [
+                    'id' => $n->id,
+                    'message' => $content['receiver_notif_message'] ?? null,
+                    'created_at' => $n->created_at,
+                ];
+            })
+            ->values();
+    }
+    public function updateAppointmentSlot(UpdateAppointmentSlotRequest $request) {
         if(!empty($request->date_to)) {
             $period = CarbonPeriod::create($request->date_from, $request->date_to);
 
@@ -59,7 +116,7 @@ class AppointmentController extends Controller
         }
         return response()->json(['message' => 'Appointment slot updated successfully.']);
     }
-    public function store(Request $request) {
+    public function store(StoreAppointmentRequest $request) {
         DB::beginTransaction();
         try {
             /*
@@ -74,7 +131,6 @@ class AppointmentController extends Controller
             if(Appointment::where('user_id', $request->user_id)->exists()) {
                 return response()->json(['message' => 'User already has an appointment.'], 400);
             }*/
-            $notification = new NotificationController();
             $timestamp = Carbon::createFromFormat('Y-m-d H:i:s', "{$request->date_appoint} 00:00:00")
                            ->timestamp;
         
@@ -89,7 +145,7 @@ class AppointmentController extends Controller
                 'date_time_appoint' => $dateTimeAppoint,
                 'reason' => $request->reason
             ];
-            $notification->notifySingleUser(
+            notify_single_user(
                 self::getAppointmentNotifMessage($data),
                 [
                     'title' => 'Appointment',
@@ -132,10 +188,9 @@ class AppointmentController extends Controller
             return response()->json(['message' => 'Error Processing Appointment', 'error' => $x->getMessage()], 400);
         }
     }
-    public function action(Request $request) {
+    public function action(AppointmentActionRequest $request) {
         DB::beginTransaction();
         try {
-            $notification = new NotificationController();
             $notif = Notifications::with(['sender', 'receiver'])->where('id', $request->id);
             if (!$notif->exists()) {
                 return response()->json(['message' => 'Notification not found.'], 404);
@@ -191,7 +246,7 @@ class AppointmentController extends Controller
                         $notifMessage = self::notifMessage($data);
                         $notifMessage2 = self::notifMessage($data, false);
 
-                        $notification->notifySingleUser(
+                        notify_single_user(
                             $notifMessage,
                             [
                                 'title' => 'Appointment',
@@ -208,7 +263,7 @@ class AppointmentController extends Controller
                         $notifMessage = self::notifMessage($data);
                         $notifMessage2 = self::notifMessage($data, false);
 
-                        $notification->notifySingleUser(
+                        notify_single_user(
                             $notifMessage,
                             [
                                 'title' => 'Appointment',
@@ -231,7 +286,7 @@ class AppointmentController extends Controller
                     $notifMessage2 = self::notifMessage($data, false);
 
                     // Send new notification to the Prefect
-                    $notification->notifySingleUser(
+                    notify_single_user(
                         $notifMessage,
                         [
                             'title' => 'Appointment',
@@ -302,13 +357,11 @@ class AppointmentController extends Controller
     }
 
 
-    public function update(Request $request, $id)
+    public function update(UpdateAppointmentRequest $request, $id)
     {
         DB::beginTransaction();
 
         try {
-            $notification = new NotificationController();
-
             // ✅ Safely parse and format date + time
             $userId = Appointment::find($id)->user_id;
             $dateTimeAppoint = Carbon::parse($request->date_appoint)
@@ -322,7 +375,7 @@ class AppointmentController extends Controller
             ];
 
             // ✅ Send reschedule notification
-            $notification->notifySingleUser(
+            notify_single_user(
                 self::getAppointmentNotifMessage($data, 'resched'),
                 [
                     'title' => 'Appointment',
@@ -365,7 +418,7 @@ class AppointmentController extends Controller
         }
     }
 
-    public function cancelAppointment(Request $request) {
+    public function cancelAppointment(CancelAppointmentRequest $request) {
         $appointment = Appointment::where('id', $request->appointment_id);
         $date = $appointment->first()->date_time_appoint;
 
@@ -417,15 +470,18 @@ class AppointmentController extends Controller
         }]);
 
         if($reqId == null) {
-            $data = $appointmentReq->where('appointment_id', NULL)
-                                  ->latest('created_at')
-                                  ->get()
-                                  ->toArray();
+            $data = \App\Http\Resources\AppointmentRequestResource::collection(
+                $appointmentReq->where('appointment_id', NULL)
+                              ->latest('created_at')
+                              ->get()
+            );
             return ($json)
                     ? response()->json($data)
                     : $data;
         }else {
-            $data = $appointmentReq->where('id', $reqId)->first();
+            $data = new \App\Http\Resources\AppointmentRequestResource(
+                $appointmentReq->where('id', $reqId)->first()
+            );
             return ($json)
                     ? response()->json($data)
                     : $data;
@@ -455,6 +511,88 @@ class AppointmentController extends Controller
             ->get();
 
         return $data;
+    }
+
+    /**
+     * FullCalendar-shaped event feed for the redesigned month/week calendar
+     * — merges accepted Appointment rows (real date_time_appoint) with
+     * still-pending appointment notifications (date/time parsed out of
+     * their JSON content) into one list for the requested [start, end]
+     * range FullCalendar passes on every view/date change.
+     */
+    public function calendarEvents(Request $request)
+    {
+        $start = Carbon::parse($request->start)->startOfDay();
+        $end = Carbon::parse($request->end)->endOfDay();
+
+        $accepted = Appointment::with(['user.profile'])
+            ->whereBetween('date_time_appoint', [$start, $end])
+            ->get()
+            ->map(function ($appointment) {
+                $name = trim(($appointment->user->profile->first_name ?? '') . ' ' . ($appointment->user->profile->last_name ?? ''));
+
+                return [
+                    'id' => 'appt-' . $appointment->id,
+                    'title' => $name ?: 'Appointment',
+                    'start' => $appointment->date_time_appoint,
+                    'backgroundColor' => '#16a34a',
+                    'borderColor' => '#16a34a',
+                    'extendedProps' => [
+                        'status' => 'accepted',
+                        'appointment_id' => $appointment->id,
+                        'user_id' => $appointment->user_id,
+                        'description' => $appointment->description,
+                        'user' => [
+                            'id' => $appointment->user->id,
+                            'role' => $appointment->user->role,
+                            'profile' => $appointment->user->profile,
+                        ],
+                    ],
+                ];
+            });
+
+        $pending = Notifications::with(['receiver.profile'])
+            ->where('notif_type', 'appointment')
+            ->get()
+            ->filter(function ($item) use ($start, $end) {
+                $content = is_string($item->content) ? json_decode($item->content, true) : $item->content;
+
+                if (!is_array($content) || !array_key_exists('accept', $content) || $content['accept'] !== null) {
+                    return false;
+                }
+                if (empty($content['date_appoint'])) {
+                    return false;
+                }
+
+                return Carbon::parse($content['date_appoint'])->between($start, $end);
+            })
+            ->map(function ($item) {
+                $content = is_string($item->content) ? json_decode($item->content, true) : $item->content;
+                $name = trim(($item->receiver->profile->first_name ?? '') . ' ' . ($item->receiver->profile->last_name ?? ''));
+
+                $date = Carbon::parse($content['date_appoint']);
+                if (!empty($content['time_appoint'])) {
+                    $time = Carbon::parse($content['time_appoint']);
+                    $date->setTime($time->hour, $time->minute);
+                }
+
+                return [
+                    'id' => 'notif-' . $item->id,
+                    'title' => ($name ?: 'Appointment') . ' (Pending)',
+                    'start' => $date->toDateTimeString(),
+                    'backgroundColor' => '#d97706',
+                    'borderColor' => '#d97706',
+                    'extendedProps' => [
+                        'status' => 'pending',
+                        'notif_id' => $item->id,
+                        'user_id' => $item->receiver_id,
+                        'reason' => $content['reason'] ?? null,
+                    ],
+                ];
+            })
+            ->values();
+
+        return response()->json($accepted->concat($pending)->values());
     }
 
     public function get($date, $type = 'accepted')
@@ -521,7 +659,7 @@ class AppointmentController extends Controller
                 ->orderBy('date_time_appoint', 'asc')
                 ->get();
 
-            return response()->json($data);
+            return AppointmentResource::collection($data);
         }
 
         /* ----------------------------------------
@@ -531,11 +669,11 @@ class AppointmentController extends Controller
     }
 
     public function getAppointmentToday() {
-        return Appointment::with(['user' => function($q) {
+        return AppointmentResource::collection(Appointment::with(['user' => function($q) {
                                 $q->with(['profile', 'program', 'parent']);
                             }])
                           ->where(DB::raw("DATE_FORMAT(date_time_appoint, '%Y-%m-%d')"), DB::raw("DATE_FORMAT(NOW(), '%Y-%m-%d')"))
-                          ->get();
+                          ->get());
     }
     public function updateAppointment($request) {
         return [

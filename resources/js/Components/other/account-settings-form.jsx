@@ -2,32 +2,45 @@ import FormButton from "@/Components/button/button";
 import FormTextfield from "@/Components/input/form-input";
 import OtpModal from "@/Components/modal/validation/show-otp-modal";
 import { useEffect, useState } from "react";
+import { router } from "@inertiajs/react";
 import { change, checkUserExist, checkCurrentPassword, showOutputModal, showWarningModal } from "@/others/function";
-import { APIRequest } from "@/others/classes/api-req";
+import { AccountService } from "@/others/services/account-service";
 import { Validator } from "@/others/classes/validator";
+import { FormCache } from "@/others/classes/form-cache";
+
+const PROFILE_CACHE_KEY = "account-setup-profile";
+const PASSWORD_CACHE_KEY = "account-setup-password";
 
 /**
  * Username/email and password are two independent submissions (separate
  * forms, separate API calls) — changing one never touches the other.
+ *
+ * Exception: during forced first-login setup, the username/email form is
+ * hidden and the password step is instead submitted together with the
+ * profile step cached on the previous page (see AccountSetupController).
  */
-const AccountSettingsForm = ({ user, targetAccount, reload }) => {
+const AccountSettingsForm = ({ user, targetAccount, reload, forceAccountSetup = false }) => {
     const isAdmin = user.role === "super_admin";
     const isEditingOwnAccount = targetAccount.id === user.id;
+    const isForceSetup = forceAccountSetup && isEditingOwnAccount;
 
     return (
         <div className="w-full pb-5 grid gap-6 relative">
-            <AccountInfoForm
-                authUser={user}
-                targetAccount={targetAccount}
-                isAdmin={isAdmin}
-                reload={reload}
-            />
+            {!isForceSetup && (
+                <AccountInfoForm
+                    authUser={user}
+                    targetAccount={targetAccount}
+                    isAdmin={isAdmin}
+                    reload={reload}
+                />
+            )}
             <PasswordForm
                 authUser={user}
                 targetAccount={targetAccount}
                 isAdmin={isAdmin}
                 isEditingOwnAccount={isEditingOwnAccount}
                 reload={reload}
+                isForceSetup={isForceSetup}
             />
         </div>
     );
@@ -91,11 +104,8 @@ const AccountInfoForm = ({ authUser, targetAccount, isAdmin, reload }) => {
                 const payload = { user_id: data.user_id, username: data.username };
                 if (isAdmin) payload.email = data.email;
 
-                const api = new APIRequest(
-                    "/account/update",
-                    "post",
+                AccountService.updateAccountInfo(
                     payload,
-                    () => {},
                     () => {
                         reload(true, "");
                         showOutputModal("Account Info Updated Successfully", "s", () => {
@@ -108,8 +118,6 @@ const AccountInfoForm = ({ authUser, targetAccount, isAdmin, reload }) => {
                         showOutputModal("Failed to Update Account Info", "e", () => reload(false));
                     }
                 );
-
-                api.sendPostData();
             }
         );
     };
@@ -150,13 +158,15 @@ const AccountInfoForm = ({ authUser, targetAccount, isAdmin, reload }) => {
     );
 };
 
-const PasswordForm = ({ authUser, targetAccount, isAdmin, isEditingOwnAccount, reload }) => {
+const PasswordForm = ({ authUser, targetAccount, isAdmin, isEditingOwnAccount, reload, isForceSetup = false }) => {
     const [commonPasswordList, setCommonPasswordList] = useState([]);
+    const cachedDraft = isForceSetup ? FormCache.load(PASSWORD_CACHE_KEY) : null;
     const [data, setData] = useState({
         user_id: targetAccount.id,
         current_password: "",
         password: "",
         password_confirmation: "",
+        ...(cachedDraft || {}),
     });
     const [error, setError] = useState({});
     const [verifyPass, setVerifyCurrentPassword] = useState(false);
@@ -168,6 +178,14 @@ const PasswordForm = ({ authUser, targetAccount, isAdmin, isEditingOwnAccount, r
             .then((text) => setCommonPasswordList(new Set(text.split(/\r?\n/).filter(Boolean))))
             .catch((x) => console.log(x));
     }, []);
+
+    // Autosave a draft while setup is forced, so an accidentally closed tab
+    // doesn't lose unsaved input.
+    useEffect(() => {
+        if (!isForceSetup) return;
+        const t = setTimeout(() => FormCache.save(PASSWORD_CACHE_KEY, data), 600);
+        return () => clearTimeout(t);
+    }, [isForceSetup, data]);
 
     // Only the account owner needs to prove their current password;
     // an admin editing someone else's account doesn't have it to give.
@@ -215,51 +233,101 @@ const PasswordForm = ({ authUser, targetAccount, isAdmin, isEditingOwnAccount, r
         return !err.current_password && !err.password && !err.password_confirmation;
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         if (!validate()) return;
-        if (showCurrentPassword && !verifyPass) return;
 
-        openOtp(true);
+        if (showCurrentPassword) {
+            const isCorrect = await checkCurrentPassword(authUser.id, data.current_password);
+            setVerifyCurrentPassword(isCorrect);
+            if (!isCorrect) {
+                setError((prev) => ({
+                    ...prev,
+                    current_password: "Wrong Password. Please Try Again.",
+                    current_passwordAsterisk: true,
+                }));
+                return;
+            }
+        }
+
+        if (isForceSetup && !FormCache.load(PROFILE_CACHE_KEY)) {
+            showOutputModal(
+                "Please complete your profile information first.",
+                "e",
+                () => router.visit(`/profile/${targetAccount.username}/edit`)
+            );
+            return;
+        }
+
+        // Forced setup already verified the user's email as its own first
+        // step — an extra OTP re-verification here would be redundant. A
+        // voluntary password change (not forced setup) still gets the OTP
+        // confirmation as an extra safety check.
+        if (isForceSetup) {
+            submitPasswordChange();
+        } else {
+            openOtp(true);
+        }
+    };
+
+    const submitPasswordChange = () => {
+        reload(true, "text-wait", isForceSetup ? "Completing account setup..." : "Updating password...");
+
+        AccountService.submitPasswordChange(
+            isForceSetup,
+            isForceSetup ? { ...FormCache.load(PROFILE_CACHE_KEY), ...data } : data,
+            () => {
+                reload(true, "");
+
+                if (isForceSetup) {
+                    FormCache.clear(PROFILE_CACHE_KEY);
+                    FormCache.clear(PASSWORD_CACHE_KEY);
+                }
+
+                showOutputModal(
+                    isForceSetup ? "Account Setup Completed Successfully" : "Password Updated Successfully",
+                    "s",
+                    () => {
+                        reload(false);
+                        if (isForceSetup) {
+                            window.location.href = "/dashboard";
+                        } else {
+                            window.location.reload();
+                        }
+                    }
+                );
+            },
+            (e) => {
+                reload(true, "");
+                const err = e?.response?.data?.error || e?.response?.data?.message;
+                showOutputModal(
+                    err || (isForceSetup ? "Failed to Complete Account Setup" : "Failed to Update Password"),
+                    "e",
+                    () => reload(false)
+                );
+            }
+        );
     };
 
     return (
         <>
-            <OtpModal
-                close={otp}
-                isEnableOuterClose={false}
-                closeModal={openOtp}
-                username={authUser.username}
-                contact={{
-                    email: authUser.email,
-                    contact_number: authUser.contact_number,
-                }}
-                proceedEvent={() => {
-                    openOtp(false);
-                    reload(true, "text-wait", "Updating password...");
-
-                    const api = new APIRequest(
-                        "/account/update",
-                        "post",
-                        data,
-                        () => {},
-                        () => {
-                            reload(true, "");
-                            showOutputModal("Password Updated Successfully", "s", () => {
-                                reload(false);
-                                window.location.reload();
-                            });
-                        },
-                        () => {
-                            reload(true, "");
-                            showOutputModal("Failed to Update Password", "e", () => reload(false));
-                        }
-                    );
-
-                    api.sendPostData();
-                }}
-                generatedPin={otp ? Math.floor(Math.random() * 900000) + 100000 : 0}
-            />
+            {!isForceSetup && (
+                <OtpModal
+                    close={otp}
+                    isEnableOuterClose={false}
+                    closeModal={openOtp}
+                    username={authUser.username}
+                    contact={{
+                        email: authUser.email,
+                        contact_number: authUser.contact_number,
+                    }}
+                    proceedEvent={() => {
+                        openOtp(false);
+                        submitPasswordChange();
+                    }}
+                    generatedPin={otp ? Math.floor(Math.random() * 900000) + 100000 : 0}
+                />
+            )}
 
             <div className="bg-white px-5 md:px-10 py-8 rounded-lg shadow-sm shadow-black/20">
                 <h2 className="text-lg font-semibold mb-5">Password</h2>
@@ -305,7 +373,7 @@ const PasswordForm = ({ authUser, targetAccount, isAdmin, isEditingOwnAccount, r
                     />
 
                     <div className="grid justify-end">
-                        <FormButton type="submit" label="Change Password" />
+                        <FormButton type="submit" label={isForceSetup ? "Complete Account Setup" : "Change Password"} />
                     </div>
                 </form>
             </div>

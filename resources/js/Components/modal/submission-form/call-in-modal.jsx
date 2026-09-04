@@ -6,8 +6,9 @@ import { change, clearField, showOutputModal, getProfilePic } from "../../../oth
 import SearchUserBar from "@/Components/input/search-user-bar"
 import AuthContext from "@/context-provider/auth-provider"
 import SelectedUser from "../../other/selected-user"
-import { APIRequest } from "@/others/classes/api-req"
+import { AppointmentService } from "@/others/services/appointment-service"
 import CheckBoxButton from "@/Components/input/checkbox"
+import { Phone, TriangleAlert } from "lucide-react"
 
 const CallInModal = (props) => {
     const { showToast } = useContext(AuthContext)
@@ -44,8 +45,7 @@ const CallInModal = (props) => {
         const f = (e)=>{}
         if(!submit) {
             setSubmit(true)
-            const api = new APIRequest('/prefect/call-in', 'post', data, f, success, error)
-            api.sendPostData()
+            AppointmentService.callIn(data, success, error)
         }
     }
     const getSearchedStudent = (s) => {
@@ -58,7 +58,7 @@ const CallInModal = (props) => {
         setSearch('')
     }
     const success = () => {
-        showToast(`${searchedStudent[0].profile?.first_name} Will Now Be Called In`, 'fa-phone')
+        showToast(`${searchedStudent[0].profile?.first_name} Will Now Be Called In`, Phone)
         props.closeModal(false)
         setData((prev) => ({
             ...prev,
@@ -71,7 +71,7 @@ const CallInModal = (props) => {
     }
     const error = (e) => {
         const m = e.response.data.message
-        showToast('Failed to Call In Student. ' + m, 'fa-triangle-exclamation', 'error')
+        showToast('Failed to Call In Student. ' + m, TriangleAlert, 'error')
         setSubmit(false)
     }
     //

@@ -6,13 +6,14 @@ use App\Http\Controllers\Modules\Account\RegisteredUserController;
 use App\Http\Controllers\Modules\Violation\ViolationController;
 use App\Http\Requests\ProfileUpdateRequest;
 use App\Models\ActionLog;
+use App\Models\ComplaintSubject;
 use App\Models\EducationBackground;
 use App\Models\Family;
 use App\Models\FamilyMember;
 use App\Models\Enrollment;
+use App\Models\Profile;
 use App\Models\Program;
 use App\Models\User;
-use Carbon\Carbon;
 use Exception;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
@@ -43,7 +44,10 @@ class ProfileController extends Controller
         }
 
         $props =  [
-            'user' => auth()->user(),
+            // teachingStaff loaded so the frontend can tell a program head
+            // apart from regular faculty (position === 'program_head'),
+            // used to gate seeing a student's enrollment history below.
+            'user' => User::with('teachingStaff')->find(auth()->id()),
             'otherUserProfile' => $account,
             'studentPrograms' => User::with('program')->where('id', auth()->user()->id)->first(),
         ];
@@ -61,7 +65,51 @@ class ProfileController extends Controller
             ], $parentStudent->getParentAndStudent());
         }
 
+        if ($account->role == 'student') {
+            $props = array_merge($props, [
+                'incident_groups' => self::getStudentIncidentGroups($account->id),
+                'violation_occurrences' => (new ViolationController())->getStudentViolationOccurence($account->id),
+            ]);
+        }
+
         return Inertia::render('other/profile', $props);
+    }
+
+    /**
+     * Powers the "Recent Incidents" sub-tab on the student profile
+     * (resources/js/Components/list/incident-group-list.jsx), grouping the
+     * student's resolved complaints by incident type. Previously fetched
+     * client-side from /api/student/incident/{id}, a route that doesn't
+     * exist.
+     */
+    public function getStudentIncidentGroups($id) {
+        $subjects = ComplaintSubject::with(['complaint.violation', 'offenses'])
+            ->where('student_id', $id)
+            ->whereHas('complaint', fn ($q) => $q->where('complaint_status', 'resolved'))
+            ->get();
+
+        return $subjects->groupBy(fn ($cs) => $cs->complaint->incident_id)
+            ->map(function ($group) {
+                $first = $group->first();
+
+                return [
+                    'violation_id' => $first->complaint->incident_id,
+                    'violation_name' => $first->complaint->violation->violation_name ?? 'Unknown',
+                    'incidents' => $group->map(fn ($cs) => [
+                        // complaint_subject/complaint_subject_violation are
+                        // composite-key junction tables with no id column;
+                        // complaint_id is unique per student within a group.
+                        'complaint_subject_id' => $cs->complaint_id,
+                        'case_number' => $cs->complaint->case_number,
+                        'created_at' => $cs->complaint->created_at,
+                        'incident' => $cs->complaint->violation->violation_name ?? null,
+                        'resolved_since' => $cs->complaint->resolved_at,
+                        'summary' => $cs->incident_summary,
+                        'offenses' => $cs->offenses->map(fn ($o) => ['id' => $o->violation_id])->values(),
+                    ])->values(),
+                ];
+            })
+            ->values();
     }
     public function edit($id)
     {
@@ -105,9 +153,56 @@ class ProfileController extends Controller
             abort(403);
         }
 
+        // During forced first-login setup, profile and password are saved
+        // together by AccountSetupController::complete() — this endpoint
+        // must not persist a profile on its own until that combined step
+        // happens, even if hit directly.
+        if ($isSelf && session('force_account_setup')) {
+            return response()->json([
+                'message' => 'Complete account setup (profile and password together) before editing your profile.',
+            ], 422);
+        }
+
+        self::applyProfileFields($targetUser, $request);
+
+        $userFields = [];
+        if ($request->filled('email')) {
+            $userFields['email'] = strtolower($request->email);
+        }
+        if ($isSelf && !$targetUser->already_update_profile) {
+            $userFields['already_update_profile'] = true;
+        }
+        if (!empty($userFields)) {
+            $targetUser->update($userFields);
+        }
+
+        // Log action
+        ActionLog::create([
+            'user_id' => auth()->id(),
+            'action_type' => 'profile update',
+            'details' => $isSelf
+                        ? 'updates its user profile information'
+                        : "updates {$targetUser->username}'s profile information"
+        ]);
+
+        return response()->json(['message' => 'successfully']);
+
+    }
+
+    /**
+     * Write the profiles-table fields (and picture / education background)
+     * for $targetUser from $request. Shared by the normal profile-edit
+     * endpoint and AccountSetupController::complete(), which needs the same
+     * writes as part of its combined profile+password submission.
+     */
+    public function applyProfileFields(User $targetUser, Request $request): void
+    {
+        // getUserFields() returns profiles-table columns — write them to the
+        // Profile model, not User (User has no religion/address/etc. columns,
+        // so this used to silently drop every one of these fields).
         $account = self::getUserFields($request);
 
-        $oldPicture = $targetUser->profile_picture;
+        $oldPicture = $targetUser->profile?->profile_picture;
 
         // If new picture uploaded → new filename
         if ($request->hasFile('profile_picture')) {
@@ -119,8 +214,9 @@ class ProfileController extends Controller
             $account['profile_picture'] = $oldPicture;
         }
 
-        // Update user fields (including new filename)
-        $targetUser->update($account);
+        // profiles has no auto-increment primary key (keyed by user_id alone),
+        // so update via the query builder rather than a model instance.
+        Profile::where('user_id', $targetUser->id)->update($account);
 
         // Save new file / replace old
         if ($request->hasFile('profile_picture')) {
@@ -138,18 +234,6 @@ class ProfileController extends Controller
         if ($targetUser->role == 'student') {
             self::updateEducationBackground($request);
         }
-
-        // Log action
-        ActionLog::create([
-            'user_id' => auth()->id(),
-            'action_type' => 'profile update',
-            'details' => $isSelf
-                        ? 'updates its user profile information'
-                        : "updates {$targetUser->username}'s profile information"
-        ]);
-
-        return response()->json(['message' => 'successfully']);
-
     }
     public function updateIdInFile($newId, $user)
     {
@@ -434,11 +518,8 @@ class ProfileController extends Controller
             'civil_status' => $request->civil_status,
             'date_of_birth' => (empty($request->date_of_birth)) ? NULL : $request->date_of_birth,
             'place_of_birth' => ucwords($request->place_of_birth),
-            'age' => (empty($request->date_of_birth)) ? NULL : Carbon::parse($request->date_of_birth)->age,
-            'civil_status' => $request->civil_status,
             'current_address' => $currentAddress,
             'permanent_address' => $permanentAddress,
-            'email' => $request->email,
             'sex' => $request->sex,
             'contact_number' => $request->phone_number,
         ];

@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Modules\AbsentForm;
 
 use App\Http\Controllers\Controller;
-use App\Http\Controllers\NotificationController;
-use App\Http\Controllers\Resource\WebPushController;
+use App\Http\Requests\AbsentForm\CancelAbsentFormRequest;
+use App\Http\Requests\AbsentForm\ConfirmAbsentFormRequest;
+use App\Http\Requests\AbsentForm\StoreAbsentFormRequest;
+use App\Http\Resources\AbsenceResource;
 use App\Mail\AbsentFormMail;
 use App\Models\Absence;
 use App\Models\ActionLog;
@@ -38,17 +40,8 @@ class AbsentFormController extends Controller
 
         return Inertia::render("$isPrefect/absent-form", $props);
     }
-    public function store(Request $request)
+    public function store(StoreAbsentFormRequest $request)
     {
-        // Validate input
-        $request->validate([
-            'date_from' => 'required|date',
-            'date_to'   => 'required|date|after_or_equal:date_from',
-            'reason'    => 'required|array|min:1',
-            'evidence'  => 'required|array|min:1',
-            'evidence.*' => 'file|mimes:jpg,jpeg,png|max:2048',
-        ]);
-
         if (auth()->user()->permissions?->allow_absent_form != 1) {
             return response()->json(['message' => 'You are restricted to submit an absent form'], 403);
         }
@@ -113,7 +106,6 @@ class AbsentFormController extends Controller
 
         // Notification (best-effort only)
         try {
-            $notification = new NotificationController();
             $sender = auth()->user()->profile?->first_name . ' ' . auth()->user()->profile?->last_name;
 
             $webpushNotif = [
@@ -125,7 +117,7 @@ class AbsentFormController extends Controller
 
             $prefectId = User::where('role', 'sub_admin')->value('id');
 
-            $notification->notifySingleUser(
+            notify_single_user(
                 self::getAbsentFormSubmissionNotifMessage($absenceId, $prefectId),
                 $webpushNotif
             );
@@ -153,7 +145,7 @@ class AbsentFormController extends Controller
 
 
 
-    public function confirmAbsentForm($id, Request $request)
+    public function confirmAbsentForm($id, ConfirmAbsentFormRequest $request)
     {
         $pdfFile = null;
         DB::beginTransaction();
@@ -250,8 +242,7 @@ class AbsentFormController extends Controller
 
         // --- WebPush (non-critical) ---
         try {
-            $notification = new NotificationController();
-            $notification->notifySingleUser(
+            notify_single_user(
                 self::getAbsentFormConfirmationNotifMessage($id, $student->user->id),
                 [
                     'title' => "Hello {$student->user->profile?->first_name}",
@@ -285,14 +276,14 @@ class AbsentFormController extends Controller
             $absence->whereNull('confirmed_at')->whereNull('archived_at')->latest('created_at');
         }
 
-        return $absence->paginate(100)->appends(['status' => $status]);
+        return AbsenceResource::collection($absence->paginate(100)->appends(['status' => $status]));
     }
     public function get($id) {
-        return Absence::with(['user.profile', 'user.program', 'user.enrollments'])
+        return new AbsenceResource(Absence::with(['user.profile', 'user.program', 'user.enrollments'])
                         ->where('id', $id)
-                        ->first();
+                        ->first());
     }
-    public function cancelAbsentForm(Request $request, $id) {
+    public function cancelAbsentForm(CancelAbsentFormRequest $request, $id) {
         $absent = Absence::with('user.profile')->where('id', $id);
 
         $absent->update([
@@ -307,8 +298,7 @@ class AbsentFormController extends Controller
         ]);
         // --- WebPush (non-critical) ---
         try {
-            $notification = new NotificationController();
-            $notification->notifySingleUser(
+            notify_single_user(
                 self::getAbsentFormRejectNotifMessage($id, $record->user->id),
                 [
                     'title' => "Hello {$record->user->profile?->first_name}",

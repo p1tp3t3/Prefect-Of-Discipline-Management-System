@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react"
 import ProfilePic from "../other/profile-pic"
-import CircleReload from "../reload/circle-reload"
-import { APIRequest } from "@/others/classes/api-req"
+import ListSkeleton from "../reload/list-skeleton"
+import { NotificationService } from "@/others/services/notification-service"
 import { getProfilePic, readableDate, readableTime, showUserType, toTitleCase } from "@/others/function"
-import TabBtn from "../button/tab-btn"
+import TabSwitcher from "../other/tab-switcher"
 import { Link } from "@inertiajs/react"
 import SearchBar from "../input/search-bar"
 
@@ -15,16 +15,15 @@ const StudentNotificationList = () => {
     const [search, setSearch] = useState('')
 
     useEffect(() => {
-        const api = new APIRequest('/api/notification/callin', 'get', {}, (res) => {
+        NotificationService.getCallInList((res) => {
             setNotifList(res)
             setRawList(res)
         })
-        api.fetchData()
     }, [])
 
     const optionTab = [
-        { val: 'callin', label: 'Call In' },
-        { val: 'appointment', label: 'Appointment' },
+        { key: 'callin', label: 'Call In' },
+        { key: 'appointment', label: 'Appointment' },
     ]
 
     const handleSelect = (type) => {
@@ -32,11 +31,10 @@ const StudentNotificationList = () => {
         setChoose(type)
         setSearch("") // reset search
 
-        const api = new APIRequest(`/api/notification/${type}`, 'get', {}, (res) => {
+        NotificationService.getByType(type, (res) => {
             setNotifList(res)
             setRawList(res)
         })
-        api.fetchData()
     }
 
     // ⭐ SEARCH FUNCTION (works with name + user ID)
@@ -88,12 +86,7 @@ const StudentNotificationList = () => {
         <div className="w-full pb-5">
             <div className="w-full flex flex-col gap-2 px-5 py-2">
                 <b>Notifications</b>
-                <TabBtn 
-                    list={optionTab}
-                    option={choose} 
-                    handleSelect={handleSelect} 
-                    className='h-[1.8rem]'
-                />
+                <TabSwitcher tabs={optionTab} value={choose} onChange={handleSelect} />
             </div>
 
             <div className="px-5 pb-3">
@@ -142,7 +135,7 @@ const StudentNotificationList = () => {
                 </div>
                 :
                 <div className="text-[1em] text-gray-500 w-full grid place-items-center h-full">
-                    <CircleReload size={3} />
+                    <ListSkeleton rows={4} />
                 </div>}
             </div>
         </div>

@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Appointment extends Model
 {
+    use HasFactory;
+
     public $table = 'appointment',
            $fillable = ['user_id', 'date_time_appoint', 'appointment_status', 'rejected_reason', 'confirmed_at', 'description'],
            $timestamps = false;

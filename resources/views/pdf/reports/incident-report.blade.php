@@ -182,8 +182,12 @@
     <section class="report-title" aria-labelledby="reportTitle">
       <h2>Student Incident Report</h2>
       <div style="font-size: 11px; color: #555;">
-        From <strong>{{ \Carbon\Carbon::parse($from)->format('F d, Y') }}</strong> 
-        to <strong>{{ \Carbon\Carbon::parse($to)->format('F d, Y') }}</strong>
+        @if(!empty($school_year))
+          School Year <strong>{{ $school_year }}</strong>
+        @else
+          From <strong>{{ \Carbon\Carbon::parse($from)->format('F d, Y') }}</strong>
+          to <strong>{{ \Carbon\Carbon::parse($to)->format('F d, Y') }}</strong>
+        @endif
       </div>
     </section>
 
@@ -194,11 +198,11 @@
           <th>ID Number</th>
           <th>Student name</th>
           <th>Program</th>
-          @if ((request('type') == 'incident'))
+          @if (($type == 'incident'))
             <th>Complainant Name</th>
           @endif
-          <th>{{ (request('type') != 'violation') ? 'Incident Reported' : 'Violation' }}</th>
-          @if ((request('type') == 'violation'))
+          <th>{{ ($type != 'violation') ? 'Incident Reported' : 'Violation' }}</th>
+          @if (($type == 'violation'))
             <th>Status</th>
           @endif
           <th>Date / time</th>
@@ -211,11 +215,11 @@
                 <td>{{ $d['student_id'] }}</td>
                 <td>{{ $d['name'] }}</td>
                 <td>{{ $d['program'] }}</td>
-                @if ((request('type') == 'incident'))
+                @if (($type == 'incident'))
                   <td>{{ $d['complainant_name'] }}</td>
                 @endif
-                <td>{{ $d[request('type')] }}</td>
-                @if ((request('type') == 'violation'))
+                <td>{{ $d[$type] }}</td>
+                @if (($type == 'violation'))
                   <td>{{ $d['status'] }}</td>
                 @endif
                 <td>{{ $d['date_time'] }}</td>

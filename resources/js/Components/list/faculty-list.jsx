@@ -5,36 +5,41 @@ import PaginationButton from "../button/pagination-btn"
 import { useEffect, useState, useContext } from "react"
 import ActionBtn from "../button/action-btn"
 import AuthContext from "@/context-provider/auth-provider"
+import { Table, TableHead, TableBody, TableRow, TableCell, TableContainer } from "@mui/material"
 
 const FacultyList = ({ list, style = true, type = 'prefect', paginate = true }) => {
-    
+
     const l = (paginate) ? list.data : list
     return (
         <div className={style && "w-full px-5 py-3 bg-white rounded-md shadow-black/20 shadow-sm"}>
             <div className="grid gap-4">
-                <table className="w-full">
-                    <thead>
-                        <th className="text-start py-3">#</th>
-                        <th className="text-start py-3">Faculty ID</th>
-                        <th className="text-start py-3">Faculty Member</th>
-                        <th className="text-start py-3">Registered Since</th>
-                        <th className="text-start py-3">Active Since</th>
-                        <th className="text-start py-3">Action</th>
-                    </thead>
-                    <tbody>
+                <TableContainer sx={{ minWidth: "700px" }}>
+                <Table sx={{ width: "100%" }}>
+                    <TableHead>
+                        <TableRow>
+                            <TableCell sx={{ fontWeight: 700 }}>#</TableCell>
+                            <TableCell sx={{ fontWeight: 700 }}>Faculty ID</TableCell>
+                            <TableCell sx={{ fontWeight: 700 }}>Faculty Member</TableCell>
+                            <TableCell sx={{ fontWeight: 700 }}>Registered Since</TableCell>
+                            <TableCell sx={{ fontWeight: 700 }}>Active Since</TableCell>
+                            <TableCell sx={{ fontWeight: 700 }}>Action</TableCell>
+                        </TableRow>
+                    </TableHead>
+                    <TableBody>
                         {( l.length != 0 )
                         ?
-                        l.map((e, i) => 
-                            <Row obj={e} type={type} i={i} />
+                        l.map((e, i) =>
+                            <Row key={e.id} obj={e} type={type} i={i} />
                         )
                         :
-                        <tr>
-                            <td className="text-center py-10 text-[0.9em]" colSpan={5}>
-                                <div>No Faculty Yet</div>
-                            </td>
-                        </tr>}
-                    </tbody>
-                </table>
+                        <TableRow>
+                            <TableCell align="center" sx={{ py: 5, fontSize: "0.9em" }} colSpan={6}>
+                                No Faculty Yet
+                            </TableCell>
+                        </TableRow>}
+                    </TableBody>
+                </Table>
+                </TableContainer>
                 {paginate &&
                 <div className="justify-self-end">
                     <PaginationButton list={(list.links.length > 3) ? list.links : []} />
@@ -84,16 +89,16 @@ const Row = ({ obj, type, i }) => {
 
 
     return (
-        <tr key={obj.id} className="border-t">
-            <td className="py-2 text-[0.8rem]">
+        <TableRow>
+            <TableCell sx={{ fontSize: "0.8rem" }}>
                 {i + 1}.
-            </td>
-            <td className="py-2 text-[0.8rem]">
+            </TableCell>
+            <TableCell sx={{ fontSize: "0.8rem" }}>
                 {d.user_id}
-            </td>
-            <td className="py-2">
+            </TableCell>
+            <TableCell>
                 <div className="flex gap-3 items-center">
-                    <ProfilePic 
+                    <ProfilePic
                         size={1.9}
                         src={getProfilePic(d.profile_picture, d.sex)}
                         showActive={true}
@@ -103,26 +108,26 @@ const Row = ({ obj, type, i }) => {
                     <div>
                         <h1 className="text-[0.8rem]"><b>{d.name}</b></h1>
                         <p className="text-[0.7rem]">{`${d.program}`}</p>
-                    </div> 
+                    </div>
                 </div>
-            </td>  
-            <td className="py-2">
+            </TableCell>
+            <TableCell>
                 <div className="text-[0.8rem]">{readableDate(d.created_at)}</div>
                 <div className="text-[0.7em]">{readableTime(d.created_at)}</div>
-            </td>
-            <td className="text-[0.8em] py-2">
-                <div>{lastSeenText}</div>
-            </td>
-            <td className="py-2">
+            </TableCell>
+            <TableCell sx={{ fontSize: "0.8em" }}>
+                {lastSeenText}
+            </TableCell>
+            <TableCell>
                 <Link href={`/profile/${d.username}`}>
-                    <ActionBtn 
+                    <ActionBtn
                         className={"bg-blue-600 text-white hover:bg-blue-700"}
                     >
                         View
                     </ActionBtn>
                 </Link>
-            </td>
-        </tr>
+            </TableCell>
+        </TableRow>
     )
 }
 

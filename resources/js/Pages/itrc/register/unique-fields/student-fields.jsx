@@ -1,4 +1,5 @@
 import DropdownField from "@/Components/input/dropdown";
+import FormTextfield from "@/Components/input/form-input";
 
 const StudentFields = ({ data, handleChange, selectionVal, validationErr }) => {
     const currentYear = new Date().getFullYear() - 1;
@@ -36,6 +37,16 @@ const StudentFields = ({ data, handleChange, selectionVal, validationErr }) => {
                 list={schoolYears}
                 name="school_year"
                 error={validationErr.school_year}
+            />
+        </div>
+        <div className="flex flex-col sm:flex-row gap-3 w-full">
+            <FormTextfield
+                label="Enrolled Since"
+                name="enrolled_at"
+                type="date"
+                val={data.enrolled_at}
+                change={handleChange}
+                error={validationErr.enrolled_at}
             />
         </div>
         </>

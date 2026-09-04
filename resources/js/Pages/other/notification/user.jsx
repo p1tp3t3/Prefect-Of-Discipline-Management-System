@@ -1,5 +1,5 @@
 import NotifDisplayLayout from "@/Layouts/notif-display-layout"
-import { APIRequest } from "@/others/classes/api-req"
+import { UserService } from "@/others/services/user-service"
 import { useEffect, useState } from "react"
 import NewUserList from "@/Components/list/new-user-list"
 import Btn from "@/Components/button/normal-btn"
@@ -14,13 +14,7 @@ const UserNotification = ({ user, notif }) => {
 
     useEffect(() => {
         if (content.success) {
-            const api = new APIRequest(
-                `/api/all-users/all?search=&date_registered=${content.new_user_date_registered}`,
-                "get",
-                {},
-                setUsers
-            )
-            api.fetchData()
+            UserService.getNewlyRegisteredUsers(content.new_user_date_registered, setUsers)
         }
     }, [])
 

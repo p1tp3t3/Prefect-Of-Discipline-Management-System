@@ -3,7 +3,7 @@ import RegisterFamilyModal from "@/Components/modal/submission-form/register-fam
 import SetReasonModal from "@/Components/modal/submission-form/set-reason-modal"
 import ViewParentRequestModal from "@/Components/modal/view/view-parent-request-modal"
 import AuthLayout from "@/Layouts/auth-layout"
-import { APIRequest } from "@/others/classes/api-req"
+import { FamilyService } from "@/others/services/family-service"
 import { useState } from "react"
 
 const ParentApprovalRequest = (props) => {
@@ -80,8 +80,7 @@ const ParentApprovalRequest = (props) => {
             setData={setData}
             sendData={() => {
                 loadRegister(true, "text-wait", 'Rejecting Parent Request Is Processing')
-                const api = new APIRequest(`/super-admin/parent-register/reject/${id}`, 'post', { reason: data.reason })
-                api.fetchData()
+                FamilyService.rejectParentRequest(id, data.reason)
             }}
             warning={{ title: 'Are You Sure You Want To Reject This Parent Request?' , btn: 'Reject Request' }}
             />

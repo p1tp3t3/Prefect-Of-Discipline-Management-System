@@ -32,7 +32,7 @@ const FadeModal = ({
 
     return (
         <motion.div
-            className={`fixed z-40 inset-0 ${center} overflow-hidden overflow-y-auto`}
+            className={`fixed z-[200] inset-0 ${center} overflow-hidden overflow-y-auto`}
             style={{ pointerEvents: close ? 'auto' : 'none' }}
             initial={false}
             animate={{ opacity: close ? 1 : 0, backgroundColor: close ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0)' }}

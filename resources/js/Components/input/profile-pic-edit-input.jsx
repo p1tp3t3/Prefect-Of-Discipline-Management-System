@@ -2,6 +2,7 @@ import { useState } from "react";
 import ProfilePic from "../other/profile-pic"
 import ImageCropper from "./cropper"
 import { base64ToFile } from "@/others/function";
+import { Pencil } from "lucide-react"
 
 
 
@@ -66,7 +67,7 @@ const ProfilePicEdit = ({
                 type="button"
                 className="cursor-pointer w-[2.2rem] grid place-items-center bottom-0 right-1 h-[2.2rem] rounded-full absolute bg-blue-600 text-white"
             >
-                <i className="fa-solid fa-edit"></i>
+                <Pencil size={14} />
             </label>
         </div>}
         {(preview && enableCrop) && (

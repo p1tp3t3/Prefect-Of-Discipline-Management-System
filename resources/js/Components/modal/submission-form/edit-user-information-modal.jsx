@@ -2,7 +2,7 @@ import UpModal from "../up-modal"
 import CheckBoxButton from "@/Components/input/checkbox"
 import FormTextfield from "@/Components/input/form-input"
 import FormButton from "@/Components/button/button"
-import { APIRequest } from "@/others/classes/api-req"
+import { AccountService } from "@/others/services/account-service"
 import { useState, useEffect } from "react"
 import { change, check, checkUserExist, fileChange, toTitleCase } from "@/others/function"
 import { requestType } from "@/others/list/type-list"
@@ -69,8 +69,7 @@ const EditUserInfoModal = (props) => {
         setExist(false)
 
         props.reload(true, 'text-wait', `${((props.data != null) ? props.data.first_name : '')}'s Account is Updating. Please Wait`)
-        const api = new APIRequest('/super-admin/account/update', 'post', data, ()=>{}, success, error)
-        api.sendPostData()
+        AccountService.updateUserInfo(data, success, error)
     }
     const success = () => {
         props.reload(true, 'success', `${((props.data != null) ? props.data.first_name : '')}'s Account Update Successfully.`)
@@ -167,7 +166,7 @@ const EditUserInfoModal = (props) => {
                         </h1>
                         <br />
                     </div>
-                    <div className="w-full flex gap-2">
+                    <div className="w-full flex flex-col sm:flex-row gap-2">
                         <FormTextfield
                             label="First Name"
                             name="first_name"
@@ -197,7 +196,7 @@ const EditUserInfoModal = (props) => {
                         />
                     </div>
                     {(data.user_type == 'student' || data.user_type == 'faculty' || data.user_type == 'administrative') &&
-                    <div className="flex gap-3">
+                    <div className="flex flex-col sm:flex-row gap-3">
                         <DropdownField
                             default={{ val: '', label: 'Select Program' }}
                             list={[

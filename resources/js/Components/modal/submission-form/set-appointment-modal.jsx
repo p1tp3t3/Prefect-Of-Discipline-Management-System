@@ -5,9 +5,10 @@ import { useState, useEffect } from "react"
 import { change, getProfilePic, showUserType, showOutputModal, showWarningModal, toTitleCase } from "../../../others/function"
 import SearchUserBar from "@/Components/input/search-user-bar"
 import ProfilePic from "../../other/profile-pic"
-import { APIRequest } from "@/others/classes/api-req"
+import { AppointmentService } from "@/others/services/appointment-service"
 import Swal from "sweetalert2"
 import withReactContent from "sweetalert2-react-content"
+import { X } from "lucide-react"
 
 
 const AppointmentModal = (props) => {
@@ -77,15 +78,7 @@ const AppointmentModal = (props) => {
             'Cancel',
             () => {
                 props.reload(true, 'text-wait', label2 + '. Please Wait')
-                const api = new APIRequest(
-                    `/appointment/${isResched ? `update/${props.appointmentId}` : 'request'}`,
-                    'post',
-                    appoint,
-                    isResched ? props.setData : ()=>{},
-                    success,
-                    error
-                )
-                api.fetchData()
+                AppointmentService.schedule(isResched, props.appointmentId, appoint, isResched ? props.setData : ()=>{}, success, error)
             }
         )
     }
@@ -242,7 +235,7 @@ const AppointedUser = (props) => {
                     className="bg-gray-300 relative top-[-0.3rem] z-[5] w-[1.2rem] h-[1.2rem] rounded-full text-[0.8em]"
                     onClick={(props.unselect != null) ? () => props.unselect() : ()=>{}}
                 >
-                    <i className="fa-solid fa-xmark"></i>
+                    <X size={12} />
                 </button>
             </div>}
             <div className="flex gap-2">

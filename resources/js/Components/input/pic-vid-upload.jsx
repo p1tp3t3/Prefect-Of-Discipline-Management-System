@@ -1,4 +1,5 @@
 import { useRef } from "react"
+import { Plus, X, Play, FileText } from "lucide-react"
 
 const PicVidUpload = ({ 
     type,
@@ -122,7 +123,7 @@ const PicVidUpload = ({
                         htmlFor={id}
                         className="bg-blue-500 cursor-pointer text-white w-[2rem] h-[2rem] rounded-full flex-shrink-0 grid place-items-center"
                     >
-                        <i className="fa-solid fa-plus"></i>
+                        <Plus size={14} />
                     </label>
                     )}
                     <div className="flex gap-2 pb-2 w-full overflow-hidden overflow-x-auto">
@@ -177,7 +178,7 @@ const File = ({ type, removeFile, i, src }) => {
                 className="bg-white w-[1.2rem] h-[1.2rem] rounded-full text-[0.8em]"
                 onClick={() => removeFile(i)}
                 >
-                <i className="fa-solid fa-xmark"></i>
+                <X size={12} />
                 </button>
             </div>
 
@@ -189,13 +190,13 @@ const File = ({ type, removeFile, i, src }) => {
                     type="button"
                     className="cursor-default absolute w-[2rem] h-[2rem] text-white/80 bg-black/80 rounded-full z-10"
                 >
-                    <i className="fa-solid fa-play"></i>
+                    <Play size={16} />
                 </button>
                 </>
             )}
             {type === "pdf" && (
                 <div className="flex flex-col items-center justify-center text-center">
-                    <i className="fa-solid fa-file-pdf text-red-600 text-[5.5em]"></i>
+                    <FileText size="5.5em" className="text-red-600" />
                     <span className="text-[0.7em] mt-1 truncate w-[4rem]">{name}</span>
                 </div>
             )}

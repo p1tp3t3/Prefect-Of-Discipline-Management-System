@@ -2,8 +2,9 @@ import FormTextfield from "@/Components/input/form-input";
 import { change, showWarningModal, showOutputModal } from "@/others/function";
 import { useForm } from "@inertiajs/react";
 import FormButton from "@/Components/button/button";
-import { APIRequest } from "@/others/classes/api-req";
+import { PasswordRecoveryService } from "@/others/services/password-recovery-service";
 import { useEffect, useState } from "react";
+import { Lock } from "lucide-react";
 
 const RecoverPassword = (props) => {
     const { data, setData , post, processing, errors } = useForm({
@@ -60,15 +61,7 @@ const RecoverPassword = (props) => {
             "Cancel",
             () => {
                 props.reload(true, "text-wait", "Updating password. Please wait…");
-                const api = new APIRequest(
-                    "/forgot-password/recover",
-                    "post",
-                    data,
-                    () => {},
-                    success,
-                    failed
-                );
-                api.sendPostData();
+                PasswordRecoveryService.recover(data, success, failed);
             }
         );
     };
@@ -129,7 +122,7 @@ const RecoverPassword = (props) => {
                             id="password"
                             val={data.new_password}
                             error={error_new_password}
-                            icon="fa-solid fa-lock"
+                            icon={Lock}
                             change={handleChange}
                             enableShowPassword={true}
                             req={true}
@@ -142,7 +135,7 @@ const RecoverPassword = (props) => {
                             id="password_confirmation"
                             val={data.password_confirmation}
                             error={error_password}
-                            icon="fa-solid fa-lock"
+                            icon={Lock}
                             change={handleChange}
                             enableShowPassword={true}
                             req={true}

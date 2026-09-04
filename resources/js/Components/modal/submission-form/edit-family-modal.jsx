@@ -3,7 +3,7 @@ import FormButton from "@/Components/button/button";
 import ProfilePic from "@/Components/other/profile-pic";
 import CircleReload from "@/Components/reload/circle-reload";
 import { useEffect, useState } from "react";
-import { APIRequest } from "@/others/classes/api-req";
+import { FamilyService } from "@/others/services/family-service";
 import {
   showWarningModal,
   showOutputModal,
@@ -40,25 +40,17 @@ const EditFamilyModal = (props) => {
       setMembers([...props.data.members]);
     }
 
-    const api = new APIRequest("/api/family/list", "get", null, (res) => {
+    FamilyService.getFamilyList((res) => {
       setAvailableFamilies(res || []);
       setTimeout(() => setIsLoading(false), 300);
     });
-
-    api.fetchData();
   }, [props.close]);
 
   // ---------------------------------------------------------
   // LOAD TARGET FAMILY MEMBERS (FOR SWAP)
   // ---------------------------------------------------------
   const loadTargetFamilyMembers = (familyId) => {
-    const api = new APIRequest(
-      `/api/family/members/${familyId}`,
-      "get",
-      null,
-      (res) => setTargetFamilyMembers(res || [])
-    );
-    api.fetchData();
+    FamilyService.getFamilyMembers(familyId, (res) => setTargetFamilyMembers(res || []));
   };
 
   // ---------------------------------------------------------
@@ -72,15 +64,13 @@ const EditFamilyModal = (props) => {
       "Move Member",
       "Cancel",
       () => {
-        const api = new APIRequest(
-          "/prefect/family/action",
-          "post",
+        props.reload(true, "text-wait", "Moving member...");
+        FamilyService.familyAction(
           {
             type: 'move',
             user_id: members[i].user_id,
             to_family_id: targetFamilyId,
           },
-          () => {},
           () => {
             props.reload(true, "");
             showOutputModal("Member moved successfully", "s", () => {
@@ -95,9 +85,6 @@ const EditFamilyModal = (props) => {
             });
           }
         );
-
-        props.reload(true, "text-wait", "Moving member...");
-        api.fetchData();
       }
     );
   };
@@ -108,15 +95,13 @@ const EditFamilyModal = (props) => {
   const confirmSwap = () => {
     if (!swapMode || !selectedTargetMember) return;
 
-    const api = new APIRequest(
-      "/prefect/family/action",
-      "post",
+    props.reload(true, "text-wait", "Swapping members...");
+    FamilyService.familyAction(
       {
         type: 'swap',
         memberA: members[swapMode.memberIndex].user_id,
         memberB: selectedTargetMember,
       },
-      () => {},
       () => {
         props.reload(true, "");
         showOutputModal("Members swapped successfully", "s", () => {
@@ -134,9 +119,6 @@ const EditFamilyModal = (props) => {
         });
       }
     );
-
-    props.reload(true, "text-wait", "Swapping members...");
-    api.fetchData();
   };
 
   // ---------------------------------------------------------
@@ -164,17 +146,10 @@ const EditFamilyModal = (props) => {
     const newTimer = setTimeout(() => {
       setIsSearching(true);
 
-      const api = new APIRequest(
-        `/api/all-users/family-student?search=${txt}`,
-        "get",
-        null,
-        (res) => {
-          setSearchResults(res || []);
-          setIsSearching(false);
-        }
-      );
-
-      api.fetchData();
+      FamilyService.searchFamilyStudent(txt, (res) => {
+        setSearchResults(res || []);
+        setIsSearching(false);
+      });
     }, 500);
 
     setTypingTimer(newTimer);
@@ -189,15 +164,13 @@ const EditFamilyModal = (props) => {
       "Join Family",
       "Cancel",
       () => {
-        const api = new APIRequest(
-          "/prefect/family/action",
-          "post",
+        props.reload(true, "text-wait", "Adding member...");
+        FamilyService.familyAction(
           {
             type: 'join',
             family_id: props.data.id,
             user_id: user.id,
           },
-          () => {},
           () => {
             props.reload(true, "");
             showOutputModal("User successfully added!", "s", () => {
@@ -213,9 +186,6 @@ const EditFamilyModal = (props) => {
             });
           }
         );
-
-        props.reload(true, "text-wait", "Adding member...");
-        api.fetchData();
       }
     );
   };

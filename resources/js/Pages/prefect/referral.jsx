@@ -1,14 +1,13 @@
 import AuthLayout from "@/Layouts/auth-layout"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import ReferralList from "@/Components/list/referral-list"
 import ViewReferralModal from "@/Components/modal/view/view-referral-modal"
-import IssueReferralModal from "@/Components/modal/submission-form/issue-referral-modal"
 import Btn from "@/Components/button/normal-btn"
 import { BroadcastManager } from "@/others/classes/broadcast-manager"
-import TabBtn from "@/Components/button/tab-btn"
+import TabSwitcher from "@/Components/other/tab-switcher"
 import { router } from "@inertiajs/react"
-import { APIRequest } from "@/others/classes/api-req"
-import Reload from "@/Components/reload/reload"
+import { ReferralService } from "@/others/services/referral-service"
+import { useReload } from "@/context-provider/reload-provider"
 import Swal from "sweetalert2"
 import withReactContent from "sweetalert2-react-content"
 import { showOutputModal, showWarningModal } from "@/others/function"
@@ -19,36 +18,20 @@ const PrefectReferral = (props) => {
 
     const [viewReferral, openViewReferral] = useState(false),
           [id, setId] = useState(''),
-          [reload, setReload] = useState(false),
-          [issueReferral, openIssueReferral] = useState(false),
           [referral_req_list, setReferralRequestList] = useState(props.referral_request.data),
           [referral_list, setReferralList] = useState(props.referral.data),
-          [choose, setChoose] = useState((url.has('status') ? url.get('status') : 'req')),
-          [reloadType, setReloadType] = useState(""),
-          [reloadLabel, setReloadLabel] = useState(""),
+          [choose, setChoose] = useState((url.has('status') ? url.get('status') : 'req'))
 
-          [data, setData] = useState({
-              referrer_id: props.user.id,
-              referred_student_id: '',
-              referral_reason: ''
-          })
-    
+    const { loadRegister } = useReload()
+
     const optionTab = [
-        { val: 'req', label: 'Pending Referrals' },
-        { val: 'approve', label: 'Approved  Referrals' },
+        { key: 'req', label: 'Pending Referrals' },
+        { key: 'approve', label: 'Approved  Referrals' },
     ]
 
     const setViewReferralId = (i) => {
         openViewReferral(true)
         setId(i)
-    }
-    const isReload = () => {
-        return reload ? "opacity-1 z-50" : "opacity-0 z-[-1]";
-    }
-    const loadRegister = (r, t, l) => {
-        setReload(r);
-        setReloadType(t);
-        setReloadLabel(l);
     }
     const handleSelect = (type) => {
         if (choose != type) {
@@ -92,8 +75,7 @@ const PrefectReferral = (props) => {
             () => {
                 loadRegister(true, "text-wait", confirmTxt)
                 const callBack = (confirm) ? successConfirm : successCancel
-                const api = new APIRequest(route, 'post', {}, setter, callBack, (confirm) ? errorApprove : errorCancel)
-                api.fetchData()
+                ReferralService.verify(type, id, setter, callBack, (confirm) ? errorApprove : errorCancel)
             }
         )
     }
@@ -136,25 +118,7 @@ const PrefectReferral = (props) => {
 
     return (
         <>
-            <Reload
-                transition={isReload()}
-                type={reloadType}
-                label={reloadLabel}
-                onClose={setReload}
-            />
-            <IssueReferralModal 
-                close={issueReferral} 
-                closeModal={openIssueReferral} 
-                pd={['px-10', 'py-7']}
-                isEnableOuterClose={true} 
-                setter={setData}
-                val={data}
-                reload={loadRegister}
-                student_list={props.students}
-                cntr={false}
-                user={props.user}
-            />
-            <ViewReferralModal 
+            <ViewReferralModal
                 close={viewReferral} 
                 closeModal={openViewReferral} 
                 pd={['px-10', 'py-7']}
@@ -169,7 +133,7 @@ const PrefectReferral = (props) => {
                         <div className="flex flex-col sm:flex-row w-full justify-between items-start sm:items-center gap-3">
                             <h1 className="text-[1.3em] sm:text-[1.5em] font-bold">REFERRAL</h1>
                             <div className="w-full sm:w-auto">
-                                <Btn onclick={() => openIssueReferral(true)} className="">
+                                <Btn onclick={() => router.visit('/referral/report')} className="">
                                     Report Referral
                                 </Btn>
                             </div>
@@ -177,12 +141,7 @@ const PrefectReferral = (props) => {
 
                         {/* Tabs */}
                         <div className="overflow-x-auto">
-                            <TabBtn 
-                                list={optionTab}
-                                option={choose} 
-                                handleSelect={handleSelect} 
-                                className="h-[2.2rem]"
-                            />
+                            <TabSwitcher tabs={optionTab} value={choose} onChange={handleSelect} />
                         </div>
 
                         {/* Table/List */}
@@ -192,7 +151,7 @@ const PrefectReferral = (props) => {
                                     list={referral_list}
                                     style={true} 
                                     viewReferral={setViewReferralId}
-                                    type={props.user.user_type}
+                                    type={props.user.role}
                                     events={setRequestActionEvent}
                                 />
                             </div>

@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { motion } from "framer-motion";
+import { X } from "lucide-react";
 
 const UpModal = ({
   children,
@@ -29,7 +30,7 @@ const UpModal = ({
 
   return (
     <motion.div
-      className={`fixed inset-0 z-40 ${center} overflow-y-auto overflow-x-hidden`}
+      className={`fixed inset-0 z-[200] ${center} overflow-y-auto overflow-x-hidden`}
       style={{ pointerEvents: close ? 'auto' : 'none' }}
       initial={false}
       animate={{ opacity: close ? 1 : 0, backgroundColor: close ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0)' }}
@@ -45,7 +46,7 @@ const UpModal = ({
           initial={false}
           animate={{ y: close ? 0 : 40, opacity: close ? 1 : 0 }}
           transition={{ duration: 0.3, ease: "easeOut" }}
-          className={`${w} max-w-[95vw] sm:max-w-[40rem] shadow-md rounded-md ${pd[0]} ${pd[1]} ${bgColor} ${textColor}`}
+          className={`${w} max-w-[95vw] shadow-md rounded-md ${pd[0]} ${pd[1]} ${bgColor} ${textColor}`}
           onClick={(e) => e.stopPropagation()}
         >
             {/* ❌ Close button */}
@@ -55,7 +56,7 @@ const UpModal = ({
             className="absolute top-2 right-3 text-gray-500 hover:text-black text-xl font-bold focus:outline-none transition"
             aria-label="Close modal"
           >
-            <i className="fa-solid fa-xmark"></i>
+            <X size={18} />
           </button>}
           {children}
         </motion.div>

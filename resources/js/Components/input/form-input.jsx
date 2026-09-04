@@ -2,17 +2,18 @@ import CircleReload from '../reload/circle-reload'
 import './style.css'
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
+import { Eye, EyeOff } from 'lucide-react'
 
-const FormTextfield = ({ 
-    label = null, 
-    type = 'text', 
-    name = null, 
-    val = '', 
+const FormTextfield = ({
+    label = null,
+    type = 'text',
+    name = null,
+    val = '',
     id = '',
-    error = null, 
-    change = null, 
-    icon = null, 
-    color = { border: 'border-blue-700', bg: 'bg-gray-200' }, 
+    error = null,
+    change = null,
+    icon: Icon = null,
+    color = { border: 'border-blue-700', bg: 'bg-gray-200' },
     req = false,
     length = null,
     allow = null,
@@ -25,6 +26,7 @@ const FormTextfield = ({
     const [focus, setFocus] = useState(false)
     const [localError, setLocalError] = useState(null)
     const [loading, setLoading] = useState(false)
+    const [showPassword, setShowPassword] = useState(false)
 
     const isStretched = focus || val !== ''
 
@@ -99,21 +101,21 @@ const FormTextfield = ({
     return (
         <div className='w-full flex flex-col'>
             <div className={`w-[100%] ${(type != 'textarea') ? 'h-[2.6rem]' : 'h-[10rem]'} frm-inpt-brdr border-b-[1px] ${color.border} ${color.bg} relative`}>
-                <div className="flex items-center gap-2 pr-3 pl-3"> 
-                    {icon && 
+                <div className="flex items-center gap-2 pr-3 pl-3">
+                    {Icon &&
                     <div className='text-[13px]'>
-                        <i className={`${icon} ${isStretched ? 'text-blue-700' : ''} transition-colors duration-300`}></i>
+                        <Icon size={13} className={`${isStretched ? 'text-blue-700' : ''} transition-colors duration-300`} />
                     </div>}
                     <div className={`h-[100%] w-[100%] relative flex flex-col ${(type != 'textarea') ? 'justify-center' : ''}`}>
                         {(type != 'textarea')
                         ?
-                        <input 
+                        <input
                             value={val}
-                            placeholder='' 
-                            className='text-[12px] h-full' 
-                            type={type} 
-                            name={name} 
-                            id={id} 
+                            placeholder=''
+                            className='text-[12px] h-full'
+                            type={(type === 'password' && showPassword) ? 'text' : type}
+                            name={name}
+                            id={id}
                             min={min}
                             onChange={(e) => {
                                 const value = e.target.value
@@ -142,17 +144,11 @@ const FormTextfield = ({
                             </span>
                         )}
                         {enableShowPassword && type === 'password' && (
-                            <span 
-                                className="absolute right-0 top-1/2 -translate-y-1/2 cursor-pointer text-gray-500 hover:text-gray-700"
-                                onClick={() => {
-                                    const input = document.getElementById(id);
-                                    if (input) {
-                                        input.type = input.type === 'password' ? 'text' : 'password';
-                                        document.getElementById(`pass-eye-${id}`).className = input.type === 'password' ? 'fa-solid fa-eye text-blue-800' : 'fa-solid fa-eye-slash text-blue-800';
-                                    }
-                                }}
+                            <span
+                                className="absolute right-0 top-1/2 -translate-y-1/2 cursor-pointer text-blue-800"
+                                onClick={() => setShowPassword((prev) => !prev)}
                             >
-                                <i className="fa-solid fa-eye text-blue-800" id={`pass-eye-${id}`}></i>
+                                {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
                             </span>
                         )}
                     </div>

@@ -1,19 +1,17 @@
 import ViewAbsentFormModal from "@/Components/modal/view/view-absent-form-modal"
 import CircleReload from "@/Components/reload/circle-reload"
 import NotifDisplayLayout from "@/Layouts/notif-display-layout"
-import { APIRequest } from "@/others/classes/api-req"
+import { AbsentFormService } from "@/others/services/absent-form-service"
 import { useEffect, useState } from "react"
 
 const AbsentNotification  = (props) => {
     const content = JSON.parse(props.notif.content.replace(/'/g, '"'))
 
     const [data, setData] = useState(null)
-    
-    useEffect(() => {
-        const id = new URLSearchParams(window.location.search).get('absent_id'),
-                api = new APIRequest(`/absent-form/get/${id}`, 'post', {}, setData)
 
-        api.fetchData()
+    useEffect(() => {
+        const id = new URLSearchParams(window.location.search).get('absent_id')
+        AbsentFormService.getAbsentFormInfo(id, setData)
     }, [])
 
 

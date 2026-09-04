@@ -1,33 +1,34 @@
-import { APIRequest } from "@/others/classes/api-req";
+import { ReportArchiveService } from "@/others/services/report-archive-service";
 import { readableDate, readableTime, toTitleCase } from "@/others/function";
 import React, { useState, memo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
-const IncidentGroupList = ({ user_id }) => {
+const IncidentGroupList = ({ user_id, list: listProp = null }) => {
   const [openIds, setOpenIds] = useState(() => new Set());
-  const [list, setList] = useState([]); // ✅ start as array so render logic is simpler
-  const [loading, setLoading] = useState(true);
+  const [list, setList] = useState(listProp ?? []);
+  const [loading, setLoading] = useState(listProp == null);
 
   useEffect(() => {
+    // The profile controller now passes the incident groups down as a
+    // prop; only fall back to the (legacy) API call when none is given.
+    if (listProp != null) {
+      setList(listProp);
+      setLoading(false);
+      return;
+    }
+
     let cancelled = false;
 
-    const api = new APIRequest(
-      `/api/student/incident/${user_id}`,
-      "get",
-      null,
-      (data) => {
-        if (cancelled) return;
-        setList(Array.isArray(data) ? data : []);
-        setLoading(false);
-      }
-    );
-
-    api.fetchData();
+    ReportArchiveService.getStudentIncidentGroups(user_id, (data) => {
+      if (cancelled) return;
+      setList(Array.isArray(data) ? data : []);
+      setLoading(false);
+    });
 
     return () => {
       cancelled = true;
     };
-  }, [user_id]); // ✅ refetch when user_id changes
+  }, [user_id, listProp]);
 
   const toggle = (violation_id) => {
     setOpenIds((prev) => {

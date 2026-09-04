@@ -1,7 +1,6 @@
 import ViewGatePassModal from "@/Components/modal/view/view-gatepass-modal"
 import CircleReload from "@/Components/reload/circle-reload"
 import NotifDisplayLayout from "@/Layouts/notif-display-layout"
-import { APIRequest } from "@/others/classes/api-req"
 import { useEffect, useState } from "react"
 
 const GatePassNotification = (props) => {

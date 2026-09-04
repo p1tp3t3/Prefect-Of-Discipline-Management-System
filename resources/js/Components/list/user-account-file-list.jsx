@@ -1,79 +1,104 @@
-import { APIRequest } from "@/others/classes/api-req";
+import { useState } from "react";
+import { DataGrid } from "@mui/x-data-grid";
+import { Box } from "@mui/material";
 import ActionBtn from "../button/action-btn";
+import AccountFilePreviewModal from "../modal/view/account-file-preview-modal";
+import { FileText } from "lucide-react";
 
 const UserAccountFileList = ({ list = null, deleteFile }) => {
-    return (
-        <div className="w-full py-3 bg-white rounded-md shadow-black/20 shadow-sm grid gap-3">
-            <div>
-                <table className="w-full border-collapse">
-                    <thead>
-                        <th className="py-3 sticky top-0 bg-white text-[0.9em] border-b">#</th>
-                        <th className="py-3 sticky top-0 bg-white text-[0.9em] border-b">File Name</th>
-                        <th className="py-3 sticky top-0 bg-white text-[0.9em] border-b">Last Modified</th>
-                        <th className="py-3 sticky top-0 bg-white text-[0.9em] border-b">Action</th>
-                    </thead>
-                    <tbody>
-                        {(list != null)
-                        ?
-                        ((list.length != 0)
-                        ?
-                        list.map((e, i) => <Row data={e} i={i} deleteFile={deleteFile} />)
-                        :
-                        <tr>
-                            <td colspan={4} className="w-full">
-                                <div className="grid place-items-center w-full text-[1em] text-gray-500">
-                                    <div className="text-[4em]">
-                                        <i className="fa-solid fa-circle-exclamation"></i>
-                                    </div>
-                                    <div>No Files Uploaded Yet</div>
-                                </div>
-                            </td>
-                        </tr>)
-                        :
-                        <tr className="text-[1em] text-gray-500 w-full grid place-items-center h-full">
-                            <div className="grid place-items-center">
-                                <div className="text-[4em]">
-                                    <i className="fa-solid fa-circle-notch fa-spin"></i>
-                                </div>
-                                <div>Loading...</div>
-                            </div>
-                        </tr>}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    )
-}
+    const rows = list ?? [];
+    const [previewFile, setPreviewFile] = useState(null);
 
-const Row = ({ data, i, deleteFile }) => {
     const downloadFile = (fileName) => {
-        const link = `/download/user/account/${fileName}`
-        window.open(link, '_blank');
-    }
+        window.open(`/download/user/account/${fileName}`, "_blank");
+    };
+
+    const columns = [
+        {
+            field: "index",
+            headerName: "#",
+            width: 60,
+            sortable: false,
+            renderCell: (params) =>
+                `${params.api.getRowIndexRelativeToVisibleRows(params.id) + 1}.`,
+        },
+        {
+            field: "name",
+            headerName: "File Name",
+            flex: 1,
+            minWidth: 220,
+            renderCell: ({ row }) => (
+                <button
+                    type="button"
+                    onClick={() => setPreviewFile(row.name)}
+                    className="flex items-center gap-3 h-full hover:underline"
+                >
+                    <FileText size="1.1em" className="text-green-600" />
+                    <div className="text-[0.8em]">{row.name}</div>
+                </button>
+            ),
+        },
+        {
+            field: "last_modified",
+            headerName: "Last Modified",
+            width: 220,
+            renderCell: ({ row }) => <span className="text-[0.8em]">{row.last_modified}</span>,
+        },
+        {
+            field: "actions",
+            type: "actions",
+            headerName: "Action",
+            width: deleteFile ? 340 : 240,
+            sortable: false,
+            headerAlign: "left",
+            align: "left",
+            renderCell: ({ row }) => (
+                <div className="flex gap-2 items-center h-full">
+                    <ActionBtn onClick={() => setPreviewFile(row.name)} className="bg-gray-700 text-white hover:bg-gray-800">
+                        View
+                    </ActionBtn>
+                    <ActionBtn onClick={() => downloadFile(row.name)} className="bg-blue-600 text-white hover:bg-blue-700">
+                        Download File
+                    </ActionBtn>
+                    {deleteFile && (
+                        <ActionBtn onClick={() => deleteFile(row.name)} className="bg-red-600 text-white hover:bg-red-700">
+                            Delete
+                        </ActionBtn>
+                    )}
+                </div>
+            ),
+        },
+    ];
 
     return (
-        <tr key={data.id} className="border-b">
-            <td className="text-[0.8em]">
-                {i + 1}.
-            </td>
-            <td className="flex gap-3 items-center py-3">
-                <div>
-                    <i className="fa-solid fa-file text-[1.1em] text-green-600"></i>
-                </div>
-                <div className="text-[0.8em]">{data.name}</div>
-            </td>
-            <td className="py-3">
-                <div className="text-[0.8em]">
-                    {data.last_modified}
-                </div>
-            </td>
-            <td className="py-3 flex items-center gap-2 text-[0.8em]">
-                <ActionBtn onClick={() => downloadFile(data.name)} className={"bg-blue-600 text-white hover:bg-blue-700"}>
-                    Download File
-                </ActionBtn>
-            </td>
-        </tr>
-    )
-}
+        <Box className="w-full bg-white rounded-md shadow-black/20 shadow-sm px-5 py-3 overflow-x-auto" sx={{ width: "100%" }}>
+            <AccountFilePreviewModal
+                close={previewFile !== null}
+                closeModal={() => setPreviewFile(null)}
+                fileName={previewFile}
+            />
+            <Box sx={{ minWidth: "700px" }}>
+                <DataGrid
+                    rows={rows}
+                    getRowId={(row) => row.name}
+                    disableRowSelectionOnClick
+                    showToolbar
+                    hideFooterSelectedRowCount
+                    pagination
+                    initialState={{ pagination: { paginationModel: { page: 0, pageSize: 20 } } }}
+                    pageSizeOptions={[20, 50, 100, 200]}
+                    localeText={{ noRowsLabel: "No Files Uploaded Yet" }}
+                    sx={{
+                        "& .MuiDataGrid-toolbarContainer": {
+                            minHeight: "2.75rem",
+                            paddingBlock: "0.4rem",
+                        },
+                    }}
+                    columns={columns}
+                />
+            </Box>
+        </Box>
+    );
+};
 
-export default UserAccountFileList
+export default UserAccountFileList;

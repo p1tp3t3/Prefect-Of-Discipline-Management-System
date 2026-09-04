@@ -3,7 +3,7 @@ import FormTextfield from "@/Components/input/form-input"
 import { change, showOutputModal, showWarningModal } from "@/others/function"
 import { useState, useEffect } from "react"
 import FormButton from "@/Components/button/button"
-import { APIRequest } from "@/others/classes/api-req"
+import { ViolationService } from "@/others/services/violation-service"
 
 const SetPenaltyModal = (props) => {
     const action = props.action || 'add'
@@ -49,12 +49,10 @@ const SetPenaltyModal = (props) => {
             () => {
                 props.reload(true, 'text-wait', 'Creating New Penalty')
 
-                const api = new APIRequest('/maintenance/penalty/create', 'post', data, props.setter,
+                ViolationService.createPenalty(data, props.setter,
                     () => props.reload(true, 'success', 'New Penalty Created Successfully'),
                     (e) => props.reload(true, 'error', 'Failed. ' + (e?.response.data.message || ''))
                 )
-
-                api.fetchData()
             }
         )
     }

@@ -4,12 +4,14 @@ import NotificationModal from "../modal/notification-modal";
 import AccountModal from "../modal/account-modal";
 import { getChannelList, getProfilePic } from "../../others/function";
 import CallInModal from "../modal/submission-form/call-in-modal";
-import { APIRequest } from "@/others/classes/api-req";
+import { UserService } from "@/others/services/user-service";
+import { NotificationService } from "@/others/services/notification-service";
 import { BroadcastManager } from "@/others/classes/broadcast-manager";
 import Toast from "../modal/view/toast";
 import AuthContext from "@/context-provider/auth-provider";
-import { Link } from "@inertiajs/react";
+import { Link, usePage } from "@inertiajs/react";
 import { Broadcast } from "@/others/classes/broadcast-cofiguration";
+import { IconButton } from "@mui/material";
 
 const AuthHeader = (props) => {
   const [pane, setOpenPanelId] = useState(null),
@@ -23,6 +25,11 @@ const AuthHeader = (props) => {
   const { usr, toast, toastLabel, toastIcon, openToast } =
     useContext(AuthContext);
 
+  // Reliably eager-loaded regardless of which page's controller built
+  // `usr`/`props.user` — see HandleInertiaRequests.
+  const { auth } = usePage().props
+  const identity = auth?.user ?? usr
+
   useEffect(() => {
     const handlePopUpRemove = (e) => {
       if (!Object.values(panel.current).some((ref) => ref?.contains(e.target))) {
@@ -31,8 +38,7 @@ const AuthHeader = (props) => {
     };
     document.addEventListener("click", handlePopUpRemove);
     if(props.user.role == 'sub_admin') {
-      const api = new APIRequest("/all-students", "get", null, setStudentList);
-      api.fetchData();
+      UserService.getAllStudents(setStudentList);
     }
     return () => document.removeEventListener("click", handlePopUpRemove);
   }, []);
@@ -58,18 +64,13 @@ const AuthHeader = (props) => {
   }, []);
 
   useEffect(() => {
-    const api = new APIRequest(
-      `/notification/${usr.id}/4`,
-      "get",
-      {},
-      (e) => {
+    NotificationService.getInitial(usr.id, 4, (e) => {
         setNotifCount(e.unread_count);
         setNotifList(e.notif);
         setSize(e.size);
       },
       (err) => console.log(err)
     );
-    api.fetchData();
   }, []);
 
   const handleTogglePanel = (panelId) => {
@@ -77,8 +78,23 @@ const AuthHeader = (props) => {
   };
 
 
-  const btn =
-    "h-full w-[2.5rem] relative grid place-items-center rounded-[100%] text-[1.2em] text-black bg-white hover:bg-black/30 active:bg-black/50";
+  const btnSx = {
+    height: "2.5rem",
+    width: "2.5rem",
+    position: "relative",
+    borderRadius: "100%",
+    fontSize: "1.2em",
+    color: "#000",
+    backgroundColor: "#fff",
+    "&:hover": { backgroundColor: "rgba(0,0,0,0.3)" },
+    "&:active": { backgroundColor: "rgba(0,0,0,0.5)" },
+  };
+  const activeBtnSx = {
+    ...btnSx,
+    color: "#1d4ed8",
+    backgroundColor: "#bfdbfe",
+    "&:hover": { backgroundColor: "#bfdbfe" },
+  };
 
   return (
     <>
@@ -107,13 +123,13 @@ const AuthHeader = (props) => {
           <div className="flex gap-2">
             {props.profile && (
               <a href={`/dashboard`}>
-                <button className={btn}>
+                <IconButton sx={btnSx}>
                   <i className="fa-solid fa-home"></i>
-                </button>
+                </IconButton>
               </a>
             )}
-            <button 
-                className="h-full w-[2.5rem] rounded-[100%] text-[1.2em] text-black bg-white min-[768px]:hidden"
+            <IconButton
+                sx={{ ...btnSx, "@media (min-width:768px)": { display: "none" } }}
                 onClick={() => {
                   const aside = document.querySelector("aside"),
                         bg = document.querySelector('#sidebar-overlay')
@@ -121,26 +137,22 @@ const AuthHeader = (props) => {
                   bg.classList.toggle('hidden')
                 }}>
                 <i className="fa-solid fa-list"></i>
-            </button>
+            </IconButton>
           </div>
 
           <div className="grid relative">
             <div className="flex gap-2">
               {props.user.role == "sub_admin" && (
-                <button
-                  type="button"
-                  className={btn}
+                <IconButton
+                  sx={btnSx}
                   onClick={() => openCallIn(true)}
                 >
                   <i className="fa-solid fa-phone"></i>
-                </button>
+                </IconButton>
               )}
               <div className="h-full grid">
-                <button
-                  type="button"
-                  className={`${btn} ${
-                    pane == "notif" ? "text-blue-700 bg-blue-200" : ""
-                  }`}
+                <IconButton
+                  sx={pane == "notif" ? activeBtnSx : btnSx}
                   onClick={(e) => {
                     e.stopPropagation();
                     handleTogglePanel("notif");
@@ -152,21 +164,21 @@ const AuthHeader = (props) => {
                       {notifCount > 9 ? "9+" : notifCount}
                     </div>
                   )}
-                </button>
+                </IconButton>
               </div>
               <div className="relative">
-                <div
+                <IconButton
                   onClick={(e) => {
                     e.stopPropagation();
                     handleTogglePanel("profile");
                   }}
-                  className="cursor-pointer before:z-10 before:rounded-full before:w-full before:h-full before:contents-[''] before:active:bg-black/50 before:hover:bg-black/30 before:absolute"
+                  sx={{ padding: 0, borderRadius: "100%" }}
                 >
                   <ProfilePic
-                    src={getProfilePic(usr.profile?.profile_picture, usr.profile?.sex)}
+                    src={getProfilePic(identity.profile?.profile_picture, identity.profile?.sex)}
                     size={2.5}
                   />
-                </div>
+                </IconButton>
               </div>
             </div>
           </div>
@@ -175,6 +187,7 @@ const AuthHeader = (props) => {
           <AccountModal
             addPicRoute={props.addPicRoute}
             user={props.user}
+            identity={identity}
             authType={props.user}
             click={pane == "profile"}
             refs={(el) => (panel.current.profile = el)}

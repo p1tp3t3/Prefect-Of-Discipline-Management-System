@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Events\NotifyUser;
-use App\Http\Controllers\Resource\WebPushController;
 use App\Mail\CallInMail;
 use App\Mail\ProgramHeadCallInMail;
 use App\Models\ActionLog;
@@ -16,7 +15,6 @@ use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
-use Laravel\Reverb\Loggers\Log;
 
 use function Symfony\Component\Clock\now;
 
@@ -70,8 +68,6 @@ class NotificationController extends Controller
     }
     public function notifyCallIn(Request $request)
     {
-        $webpush = new WebPushController();
-
         DB::beginTransaction(); // << Start Transaction
 
         try {
@@ -128,13 +124,12 @@ class NotificationController extends Controller
             Mail::to($student->email)->send(new CallInMail($emailNotifData));
 
             /** WebPush to student */
-            $webpush->setId($student->user_id);
-            $webpush->push([
+            send_web_push([
                 'title' => 'Hello ' . $student->first_name,
                 'body'  => 'You have been called in by the office of the prefect.',
                 'icon'  => '',
                 'url'   => "/notification/$id"
-            ]);
+            ], $student->user_id);
 
             /** WebPush to Program Head (if enabled) */
             if ($programHead && $request->boolean('notify_program_head')) {
@@ -154,13 +149,12 @@ class NotificationController extends Controller
                     ])
                 ]);
 
-                $webpush->setId($programHead->user_id);
-                $webpush->push([
+                send_web_push([
                     'title' => 'Student Call-In Notice',
                     'body'  => "{$student->first_name} {$student->last_name} has been called in by the office of the prefect.",
                     'icon'  => '',
                     'url'   => "/notification/$id"
-                ]);
+                ], $programHead->user_id);
                 $dataProg = [
                     'program_head_name' => $programHead->first_name . ' ' . $programHead->last_name,
                     'date_reported' => Carbon::parse(now())->format('Y-d-m'),
@@ -244,23 +238,6 @@ class NotificationController extends Controller
                 break;
         }
         return self::getNotif($userId, 4);
-    }
-    public function notifySingleUser($notifField, $webpushNotifField, $broadcast = null, $enableWebPush = true) {
-        $webpush = new WebPushController();
-
-        Notifications::insert($notifField);
-        broadcast(new NotifyUser($notifField['receiver_id']));
-        $webpush->setId($notifField['receiver_id']);
-        // WebPush (Python server) — must not break on failure
-        if ($enableWebPush) {
-            try {
-                $webpush = new WebPushController();
-                $webpush->setId($notifField['receiver_id']);
-                $webpush->push($webpushNotifField);
-            } catch (\Exception $e) {
-                Log::error('WebPush failed: ' . $e->getMessage());
-            }
-        }
     }
     public function destroy(Request $request, $type) {
         $userId = auth()->user()->user_id;

@@ -2,7 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Http\Controllers\Resource\WebPushController;
 use Illuminate\Console\Command;
 
 class AvailabilityCommand extends Command
@@ -26,13 +25,12 @@ class AvailabilityCommand extends Command
      */
     public function handle()
     {
-        $push = new WebPushController();
-        $push->push([
+        send_web_push([
             'title' => 'Hello Users',
             'body' => 'The Prefect Is Now Available For Transactions',
             'icon' => '',
             'url' => '/dashboard'
-        ]);
+        ], null);
         $this->info('available');
     }
 }

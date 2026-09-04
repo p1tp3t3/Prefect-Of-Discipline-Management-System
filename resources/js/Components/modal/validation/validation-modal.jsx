@@ -1,7 +1,9 @@
 import Btn from "@/Components/button/normal-btn"
 import AlertModal from "../alert-modal"
+import { AlertCircle } from "lucide-react"
 
 const ValidationModal2 = (props) => {
+    const Icon = props.icon || AlertCircle
     return (
         <AlertModal
             close={props.close}
@@ -16,7 +18,7 @@ const ValidationModal2 = (props) => {
                 <div className="bg-white p-4 rounded-lg w-full grid gap-5">
                     <div className="text-centergrid grid gap-3 place-items-center">
                         <div>
-                            <i className={`${props.icon ? props.icon : 'fa-solid fa-circle-exclamation'} text-[8em]`}></i>
+                            <Icon size="8em" />
                         </div>
                         <p className="text-[0.8em] text-center">{props.label}</p>
                     </div>

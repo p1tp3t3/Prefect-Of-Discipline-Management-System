@@ -1,5 +1,6 @@
 import ProfilePic from "../other/profile-pic";
 import { getProfilePic, readableDate, readableTime, toTitleCase } from "@/others/function";
+import { AlertCircle } from "lucide-react";
 
 const FamilyList = ({ list, setId }) => {
     return (
@@ -11,7 +12,7 @@ const FamilyList = ({ list, setId }) => {
             ) : (
                 <div className="text-gray-500 grid place-items-center py-10">
                     <div className="text-[4em] text-gray-400">
-                        <i className="fa-solid fa-circle-exclamation"></i>
+                        <AlertCircle size="1em" />
                     </div>
                     <p className="text-sm">No Families Yet</p>
                 </div>

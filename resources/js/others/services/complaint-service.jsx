@@ -1,0 +1,24 @@
+import { APIRequest } from "../classes/api-req";
+
+export const ComplaintService = {
+    create(formData, success, error) {
+        const api = new APIRequest("/complaint/create", "post", formData, () => {}, success, error);
+        api.sendPostData();
+    },
+    getComplaintInfo(complainantId, setter) {
+        const api = new APIRequest(`/complainant/get/${complainantId}`, "post", {}, setter);
+        api.fetchData();
+    },
+    confirm(id, setter, success, error) {
+        const api = new APIRequest(`/complaint/verify/${id}/confirm`, "post", {}, setter, success, error);
+        api.fetchData();
+    },
+    reject(id, reason, setter, success, error) {
+        const api = new APIRequest(`/complaint/verify/${id}/cancel`, "post", { reason }, setter, success, error);
+        api.fetchData();
+    },
+    bulkAction(type, ids, page, setter, success, error) {
+        const api = new APIRequest(`/complaint/select/${type}`, "post", { ids, action: type, page }, setter, success, error);
+        api.fetchData();
+    },
+};

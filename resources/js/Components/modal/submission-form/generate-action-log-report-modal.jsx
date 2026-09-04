@@ -8,7 +8,7 @@ import DropdownField from "@/Components/input/dropdown"
 import BetweenTextfield from "@/Components/input/between-input"
 import RadioButton from "@/Components/input/radio"
 import FormButton from "@/Components/button/button"
-import { APIRequest } from "@/others/classes/api-req"
+import { ReportArchiveService } from "@/others/services/report-archive-service"
 
 const GenerateActionLogReportMoodal = (props) => {
     const [data, setData] = useState({
@@ -35,10 +35,9 @@ const GenerateActionLogReportMoodal = (props) => {
     }
     const handleSubmit = (e) => {
         e.preventDefault()
-        const query = new URLSearchParams(data).toString()
-        const downloadUrl = `/super-admin/report/generate?${query}`
         setReload(true)
-        const api = new APIRequest(downloadUrl, 'get', {}, (e)=>{}, () => {
+        const f = data.file_type == 'excel' ? 'action-log-report.xlsx' : 'action-log-report.pdf'
+        ReportArchiveService.downloadActionLogReport(data, f, () => {
             setReload(false)
             showOutputModal(
                 'Action Log Report Generated Successfully',
@@ -55,8 +54,6 @@ const GenerateActionLogReportMoodal = (props) => {
                 'e'
             )
         })
-        const f = data.file_type == 'excel' ? 'action-log-report.xlsx' : 'action-log-report.pdf'
-        api.downloadFile(f)
     }
     const getSearchedComplainant = (s) => {
         const f = props.students.filter((e, i) => e.id == s)

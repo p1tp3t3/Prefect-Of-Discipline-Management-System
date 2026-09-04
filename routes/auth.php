@@ -69,6 +69,7 @@ Route::middleware(['role:super_admin', 'activate', 'user-activity'])->group(func
      Route::get('/super-admin/parent-register/get/{id}', [ParentController::class, 'getParentRequest']);
 
      Route::get('/super-admin/program', [MaintenanceController::class, 'programIndex']);
+     Route::get('/super-admin/program/{id}/users', [MaintenanceController::class, 'programUsersIndex']);
      Route::post('/super-admin/user-accounts/file/del', [FileController::class, 'destroy']);
      Route::get('/super-admin/report', [ReportController::class, 'itrcIndex']);
      Route::get('/super-admin/report/generate', [ReportController::class, 'actionLogStore']);
@@ -89,6 +90,7 @@ Route::middleware(['role:super_admin', 'activate', 'user-activity'])->group(func
 */
 Route::middleware(['role:super_admin,sub_admin', 'activate', 'user-activity'])->group(function() {
      Route::get('/violation-management', [MaintenanceController::class, 'violationManagementIndex']);
+     Route::get('/violation-management/{id}/students', [ViolationController::class, 'violationStudentsIndex']);
      Route::post('/maintenance/violation/create', [MaintenanceController::class, 'offenseStore']);
      Route::post('/maintenance/violation/update', [MaintenanceController::class, 'updateOffense']);
      Route::post('/maintenance/violation/delete', [MaintenanceController::class, 'destroyOffense']);
@@ -132,7 +134,6 @@ Route::middleware(['role:sub_admin', 'activate', 'user-activity'])->group(functi
     Route::get('/prefect/archive', [ArchiveController::class, 'index']);
 
     Route::post('/prefect/call-in', [NotificationController::class, 'notifyCallIn']);
-    Route::get('/prefect/violation', [ViolationController::class, 'violationIndex']);
     Route::post('/prefect/violation/risk/notify', [NotificationController::class, 'notifyFacultyProgramHead']);
     Route::post('/prefect/violation/create', [ViolationController::class, 'store']);
 
@@ -158,8 +159,14 @@ Route::middleware(['role:sub_admin', 'activate', 'user-activity'])->group(functi
     Route::get('/download/{type}/{id}', [ArchiveController::class, 'downloadDocument']);
 
     Route::get('/prefect/report', [ReportController::class, 'index']);
-    Route::get('/prefect/analytic-report/generate', [ReportController::class, 'generateAnalyticReport']);
-    Route::get('/prefect/report/generate', [ReportController::class, 'store']);
+    Route::post('/prefect/analytic-report/generate', [ReportController::class, 'generateAnalyticReport']);
+    Route::get('/prefect/analytics/preview', [ReportController::class, 'analyticsPreview']);
+    Route::post('/prefect/report/generate', [ReportController::class, 'store']);
+    Route::get('/prefect/report/download/{fileName}', [ReportController::class, 'downloadReport'])->name('prefect.report.download');
+    Route::get('/prefect/report/view/{fileName}', [ReportController::class, 'viewReport'])->name('prefect.report.view');
+    Route::post('/prefect/report/check-duplicate', [ReportController::class, 'checkDuplicateReport']);
+    Route::get('/prefect/report/history', [ReportController::class, 'reportHistory']);
+    Route::post('/prefect/report/delete/{id}', [ReportController::class, 'destroyReport']);
     Route::post('/prefect/archive/recover', [ArchiveController::class, 'recoverDocument']);
     Route::post('/prefect/archive/delete', [ArchiveController::class, 'destroy']);
 });
@@ -173,6 +180,7 @@ Route::middleware(['role:teaching_staff', 'activate', 'user-activity'])->group(f
     Route::get('/teaching-staff/profile/{id}', [ProfileController::class, 'index']);
     Route::get('/teaching-staff/student-list', [AccountController::class, 'studentListIndex']);
     Route::get('/teaching-staff/faculty-list', [AccountController::class, 'facultyListIndex']);
+    Route::get('/teaching-staff/account-files', [AccountController::class, 'programAccountFilesIndex']);
 });
 
 /*
@@ -203,6 +211,7 @@ Route::middleware(['auth', 'activate', 'user-activity'])->group(function() {
      Route::get('/appointment/cancel', [AppointmentController::class, 'cancelAppointment']);
      Route::post('/appointment/action', [AppointmentController::class, 'action']);
      Route::post('/calendar/appointment/get/list', [AppointmentController::class, 'getAppointment']);
+     Route::get('/calendar/appointment/events', [AppointmentController::class, 'calendarEvents']);
 
      Route::get('/complaint', [ComplaintController::class, 'index']);
      Route::post('/complaint/create', [ComplaintController::class, 'store']);
@@ -213,6 +222,7 @@ Route::middleware(['auth', 'activate', 'user-activity'])->group(function() {
      Route::get('/complaint/{id}/evidence/{fileName}', [ComplaintController::class, 'downloadEvidence']);
      Route::get('/complaint/{id}/subject/{fileName}', [ComplaintController::class, 'downloadSubjectDocument']);
 
+     Route::get('/referral/report', [ReferralController::class, 'create']);
      Route::post('/referral/create', [ReferralController::class, 'store']);
      Route::post('/referral/get/{id}', [ReferralController::class, 'get']);
 
@@ -250,11 +260,11 @@ Route::middleware(['auth', 'activate', 'user-activity'])->group(function() {
           return $account->allUserAccount();
      });
      Route::get('/api/all-users/{type}', [AccountController::class, 'searchAllUsers']);
+     Route::get('/api/user-account/file', [FileController::class, 'getUserAccountZipFileList']);
+     Route::get('/api/user-account/file/{fileName}/preview', [FileController::class, 'previewAccountFile']);
+     Route::get('/api/user-account/file/{fileName}/preview-entry', [FileController::class, 'previewAccountFileEntry']);
      Route::get('/all-students', function() {
-          return User::with(['student' => function($query) {
-               $query->with('program')
-                    ->get();
-          }])->where('role', 'student')->get();
+          return User::with(['profile', 'program'])->where('role', 'student')->get();
      });
      Route::get('/settings/{id}', [AccountController::class, 'accountSettingsIndex']);
 });
@@ -268,6 +278,15 @@ Route::middleware(['auth', 'activate'])->group(function() {
      Route::get('/referral', [ReferralController::class, 'index']);
      Route::post('/account/update', [AccountController::class, 'update']);
      Route::get('/api/password/verify/{value}/{id}', [AccountController::class, 'checkCurrentPassword']);
+     Route::post('/account-setup/complete', [\App\Http\Controllers\AccountSetupController::class, 'complete']);
+
+     Route::get('/verify-email', [\App\Http\Controllers\AccountSetupController::class, 'verifyEmailPrompt'])
+          ->name('verification.notice');
+     Route::get('/verify-email/{id}/{hash}', \App\Http\Controllers\Auth\VerifyEmailController::class)
+          ->middleware('signed')
+          ->name('verification.verify');
+     Route::post('/email/verification-notification', [\App\Http\Controllers\AccountSetupController::class, 'resendVerificationEmail'])
+          ->name('verification.send');
 });
 
 /*

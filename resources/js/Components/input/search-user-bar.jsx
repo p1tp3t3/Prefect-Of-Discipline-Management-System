@@ -2,7 +2,7 @@ import SearchBar from "../input/search-bar"
 import UserProfileList from "../list/search-user-list"
 import LabelList from "../list/label-list"
 import { useEffect, useState } from "react"
-import { APIRequest } from "@/others/classes/api-req"
+import { UserService } from "@/others/services/user-service"
 
 const SearchUserBar = ({ 
     setSearch, 
@@ -40,9 +40,7 @@ const SearchUserBar = ({
 
             const timeout = setTimeout(() => {
                 console.log('Go');
-                const api = new APIRequest(`${apiLink}?search=${search}`, 'get')
-                api.setSetter(setSearchList)
-                api.fetchData()
+                UserService.search(apiLink, search, setSearchList)
             }, 2000);
 
             setTypingTimeout(timeout);

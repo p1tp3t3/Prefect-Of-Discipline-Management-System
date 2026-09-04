@@ -47,7 +47,7 @@ const ParentRegistrationForm = (props) => {
   };
 
   return (
-    <div className="w-[35rem] grid items-center px-4 sm:px-6 md:px-0 flex-shrink-0 bg-white">
+    <div className="w-full md:w-[35rem] grid items-center px-4 sm:px-6 md:px-0 md:flex-shrink-0 bg-white">
       <form
         className="w-full flex flex-col gap-5"
         onSubmit={props.submit}
@@ -66,7 +66,7 @@ const ParentRegistrationForm = (props) => {
           </div>
           <div className="flex flex-col px-6 pb-5 gap-3">
             <div className="grid gap-6">
-              <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <FormTextfield
                   label="First Name"
                   name="first_name"
@@ -136,7 +136,7 @@ const ParentRegistrationForm = (props) => {
                             change={(e) => handleChildChange(index, 'student_id', e.target.value)}
                           />
 
-                          <div className="grid grid-cols-3 gap-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <FormTextfield
                               label="First Name"
                               name="first_name"
@@ -159,7 +159,7 @@ const ParentRegistrationForm = (props) => {
                               change={(e) => handleChildChange(index, 'last_name', e.target.value)}
                             />
                           </div>
-                          <div className="flex gap-5">
+                          <div className="flex flex-col sm:flex-row gap-5">
                             <RadioButton
                               name={`child_sex_${index}`}
                               label={<b>Sex</b>}
@@ -191,7 +191,7 @@ const ParentRegistrationForm = (props) => {
                   </div>
                 )}
               </div>
-              <div className="flex gap-5">
+              <div className="flex flex-col sm:flex-row gap-5">
                 <DropdownField
                   name={`parent_role`}
                   id={`parent_role`}
@@ -222,7 +222,7 @@ const ParentRegistrationForm = (props) => {
                   </div>
                 )}
               </div>
-              <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <FormTextfield
                   label="Personal Email"
                   name="email"

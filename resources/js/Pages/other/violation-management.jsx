@@ -1,32 +1,35 @@
 import AuthLayout from "@/Layouts/auth-layout";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ManageViolation from "../itrc/maintenance/manage-violation";
-import Reload from "@/Components/reload/reload";
 import SetViolationModal from "@/Components/modal/submission-form/set-violation-modal";
 import ManagePenalty from "../itrc/maintenance/manage-penalty";
 import SetPenaltyModal from "@/Components/modal/submission-form/set-penalty-modal";
+import TabSwitcher from "@/Components/other/tab-switcher";
+import StudentViolationList from "@/Components/list/student-violation-list";
+import { useReload } from "@/context-provider/reload-provider";
 
 const ViolationManagement = (props) => {
     const [activeTab, setActiveTab] = useState('violations'),
           [penalty, openPenalty] = useState(false),
           [violation, openViolation] = useState(false),
-          [reload, setReload] = useState(false),
-          [reloadType, setReloadType] = useState(""),
-          [reloadLabel, setReloadLabel] = useState(""),
           [action, setAction] = useState("create"),
           [data, setData] = useState(null),
           [violation_list, setViolationList] = useState(props.violation),
           [penalty_list, setPenaltyList] = useState(props.penalty),
           [clickedOk, setClickOk] = useState(false);
 
-    const loadRegister = (r, t, l) => {
-        setReload(r);
-        setReloadType(t);
-        setReloadLabel(l);
-    };
-    const isReload = () => {
-        return reload ? "opacity-1 z-[100]" : "opacity-0 z-[-1]";
-    };
+    const { loadRegister, setReload, setOnClose } = useReload();
+
+    useEffect(() => {
+        setOnClose(() => (e) => {
+            if(action != 'add') {
+                setReload(e)
+                if(clickedOk) window.location.href = '/'
+                setClickOk(false)
+            }else setReload(e)
+        });
+    }, [action, clickedOk]);
+
     const openActionModal = (type, act, editData = null) => {
         setAction(act);
         if(act != 'add') setData(editData);
@@ -40,18 +43,6 @@ const ViolationManagement = (props) => {
 
     return (
         <>
-        <Reload
-            transition={isReload()}
-            type={reloadType}
-            label={reloadLabel}
-            onClose={(e) => {
-                if(action != 'add') {
-                    setReload(e)
-                    if(clickedOk) window.location.href = '/'
-                    setClickOk(false)
-                }else setReload(e)
-            }}
-        />
         <SetViolationModal
             close={violation}
             closeModal={openViolation}
@@ -75,7 +66,7 @@ const ViolationManagement = (props) => {
             setClickOk={setClickOk}
             setter={setPenaltyList}
         />
-        <div className="grid gap-8 px-4 sm:px-6 lg:px-10">
+        <div className="grid gap-8">
             <div className="flex-shrink-0 h-full">
                 <div className="pt-6 sm:pt-10">
                     <div className="grid w-full gap-3">
@@ -86,29 +77,15 @@ const ViolationManagement = (props) => {
                         </h1>
 
                         {/* Tabs */}
-                        <div className="flex flex-wrap border-b border-gray-200">
-                            <button
-                                className={`px-3 sm:px-4 py-2 ${
-                                    activeTab === "violations"
-                                        ? "border-b-2 border-blue-500 text-blue-500"
-                                        : "text-gray-600"
-                                }`}
-                                onClick={() => setActiveTab("violations")}
-                            >
-                                Manage Violations
-                            </button>
-
-                            <button
-                                className={`px-3 sm:px-4 py-2 ${
-                                    activeTab === "penalty"
-                                        ? "border-b-2 border-blue-500 text-blue-500"
-                                        : "text-gray-600"
-                                }`}
-                                onClick={() => setActiveTab("penalty")}
-                            >
-                                Manage Penalties
-                            </button>
-                        </div>
+                        <TabSwitcher
+                            tabs={[
+                                { key: "violations", label: "Manage Violations" },
+                                { key: "penalty", label: "Manage Penalties" },
+                                { key: "student-violations", label: "Student Violations" },
+                            ]}
+                            value={activeTab}
+                            onChange={setActiveTab}
+                        />
 
                         {/* Content */}
                         <div className="py-6 sm:py-10">
@@ -130,6 +107,12 @@ const ViolationManagement = (props) => {
                                     reload={loadRegister}
                                     events={[openActionModal]}
                                 />
+                            )}
+
+                            {activeTab === "student-violations" && (
+                                <div className="grid gap-4">
+                                    <StudentViolationList list={props.student_violation_list} />
+                                </div>
                             )}
                         </div>
                     </div>

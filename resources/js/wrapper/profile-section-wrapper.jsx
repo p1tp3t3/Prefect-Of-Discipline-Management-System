@@ -1,4 +1,4 @@
-const ProfileSectionWrapper = ({ title, icon = null, side = null, children }) => {
+const ProfileSectionWrapper = ({ title, icon: Icon = null, side = null, children }) => {
     return (
         <div className="bg-white px-[20px] py-[18px] border-l-[5px] border-[#3498db] shadow-md shadow-black/20">
             <div className="grid gap-5">
@@ -6,8 +6,8 @@ const ProfileSectionWrapper = ({ title, icon = null, side = null, children }) =>
                     <div className="flex justify-between items-center">
                         <h1>
                             <b>
-                                {(icon != null)
-                                ? <div className="flex gap-3 items-center"><i className={icon}></i><span>{title}</span></div>
+                                {(Icon != null)
+                                ? <div className="flex gap-3 items-center"><Icon size="1em" /><span>{title}</span></div>
                                 :<span>{title}</span>}
                             </b>
                         </h1>

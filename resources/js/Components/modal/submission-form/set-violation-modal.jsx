@@ -1,9 +1,9 @@
 import UpModal from "../up-modal"
 import FormTextfield from "@/Components/input/form-input"
-import { change, showOutputModal, showWarningModal, toTitleCase } from "@/others/function"
+import { change, showOutputModal, showWarningModal, toTitleCase, ordinal } from "@/others/function"
 import { useState, useEffect } from "react"
 import FormButton from "@/Components/button/button"
-import { APIRequest } from "@/others/classes/api-req"
+import { ViolationService } from "@/others/services/violation-service"
 import RadioButton from "@/Components/input/radio"
 
 const SetViolationModal = (props) => {
@@ -132,10 +132,6 @@ const SetViolationModal = (props) => {
         e.preventDefault()
         if (!validate()) return
 
-        const url = action === "add"
-            ? "/maintenance/violation/create"
-            : "/maintenance/violation/update"
-
         const loadingMsg = action === "add"
             ? "Creating New Violation. Please Wait"
             : "Updating Violation. Please Wait"
@@ -152,9 +148,8 @@ const SetViolationModal = (props) => {
             'Cancel',
             () => {
                 props.reload(true, "text-wait", loadingMsg)
-                const api = new APIRequest(
-                    url,
-                    "post",
+                ViolationService.saveViolation(
+                    action,
                     payload,
                     props.setter,
                     () => {
@@ -178,7 +173,6 @@ const SetViolationModal = (props) => {
                         )
                     }
                 )
-                api.fetchData()
             }
         )
     }
@@ -230,7 +224,7 @@ const SetViolationModal = (props) => {
 
                                 {penalties.map((occ, occIndex) => (
                                     <div key={occ.occurrence} className="border rounded p-3">
-                                        <h3 className="font-semibold mb-2">Occurrence {occ.occurrence}</h3>
+                                        <h3 className="font-semibold mb-2">{ordinal(occ.occurrence)} Offense</h3>
 
                                         {occ.list.map((p, pIndex) => (
                                             <div key={pIndex} className="flex items-center gap-2 mb-2">

@@ -1,9 +1,11 @@
 import SearchBar from "@/Components/input/search-bar";
-import { APIRequest } from "@/others/classes/api-req";
-import { readableDate, readableTime, showWarningModal } from "@/others/function";
+import { ProgramService } from "@/others/services/program-service";
+import { getProgramLogo, readableDate, readableTime, showWarningModal } from "@/others/function";
 import { useState } from "react";
-import { DataGrid, GridActionsCellItem } from "@mui/x-data-grid";
+import { DataGrid } from "@mui/x-data-grid";
 import { Box } from "@mui/material";
+import ActionBtn from "@/Components/button/action-btn";
+import { router } from "@inertiajs/react";
 
 const ManageProgram = ({ list, original_list, events, reload, setter }) => {
   const [search, setSearch] = useState('');
@@ -30,22 +32,51 @@ const ManageProgram = ({ list, original_list, events, reload, setter }) => {
     setter(filtered);
   };
 
+  const deleteProgram = (row) => {
+    showWarningModal(
+      `Are You Sure You Want To Delete ${row.description}?`,
+      "Delete Program",
+      "Cancel",
+      () => {
+        reload(true, "text-wait", "Deleting Program...");
+        ProgramService.delete(
+          row.id,
+          setter,
+          () => {
+            reload(true, "success", "Program Deleted Successfully");
+          },
+          (e) => {
+            reload(true, "error", e.response.data.message);
+          }
+        );
+      }
+    );
+  };
+
   const columns = [
     {
       field: "index",
       headerName: "#",
       width: 60,
       sortable: false,
+      renderCell: (params) =>
+        `${params.api.getRowIndexRelativeToVisibleRows(params.id) + 1}.`,
     },
     {
       field: "name",
-      headerName: "Acronym",
-      width: 150,
-    },
-    {
-      field: "description",
-      headerName: "Name",
+      headerName: "Program",
       flex: 1,
+      minWidth: 260,
+      sortable: false,
+      renderCell: ({ row }) => (
+        <div className="flex items-center gap-3 h-full">
+          <img src={getProgramLogo(row.logo)} alt="" className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+          <div className="flex flex-col justify-center leading-tight">
+            <div className="text-[0.8em] font-bold">{row.name}</div>
+            <div className="text-[0.7em]">{row.description}</div>
+          </div>
+        </div>
+      ),
     },
     {
       field: "created_at",
@@ -56,48 +87,30 @@ const ManageProgram = ({ list, original_list, events, reload, setter }) => {
     {
       field: "actions",
       headerName: "Action",
-      width: 180,
-      type: "actions",
-      getActions: (params) => [
-        <GridActionsCellItem
-          key="edit"
-          label="Edit"
-          showInMenu={false}
-          onClick={() => events[0]("program", "edit", params.row)}
-          className="text-blue-500 hover:underline"
-          icon={<i className="fa-solid fa-pen"></i>}
-        />,
-        <GridActionsCellItem
-          key="delete"
-          label="Delete"
-          showInMenu={false}
-          onClick={() => {
-            showWarningModal(
-              `Are You Sure You Want To Delete ${params.row.description}?`,
-              "Delete Program",
-              "Cancel",
-              () => {
-                reload(true, "text-wait", "Deleting Program...");
-                const api = new APIRequest(
-                  "/maintenance/program/delete",
-                  "post",
-                  { id: params.row.id },
-                  setter,
-                  () => {
-                    reload(true, "success", "Program Deleted Successfully");
-                  },
-                  (e) => {
-                    reload(true, "error", e.response.data.message);
-                  }
-                );
-                api.fetchData();
-              }
-            );
-          }}
-          className="text-red-500 hover:underline"
-          icon={<i className="fa-solid fa-trash"></i>}
-        />,
-      ],
+      width: 270,
+      sortable: false,
+      renderCell: ({ row }) => (
+        <div className="flex gap-2 items-center h-full">
+          <ActionBtn
+            onClick={() => router.visit(`/super-admin/program/${row.id}/users`)}
+            className="!inline-flex !items-center !gap-1.5 !bg-gray-100 !text-gray-700 hover:!bg-gray-200 !rounded-full !px-3.5 !py-1.5 !text-[0.8em] !font-medium"
+          >
+            <i className="fa-solid fa-eye text-[0.8em]"></i> View
+          </ActionBtn>
+          <ActionBtn
+            onClick={() => events[0]("program", "edit", row)}
+            className="!inline-flex !items-center !gap-1.5 !bg-blue-50 !text-blue-700 hover:!bg-blue-100 !rounded-full !px-3.5 !py-1.5 !text-[0.8em] !font-medium"
+          >
+            <i className="fa-solid fa-pen text-[0.8em]"></i> Edit
+          </ActionBtn>
+          <ActionBtn
+            onClick={() => deleteProgram(row)}
+            className="!inline-flex !items-center !gap-1.5 !bg-red-50 !text-red-700 hover:!bg-red-100 !rounded-full !px-3.5 !py-1.5 !text-[0.8em] !font-medium"
+          >
+            <i className="fa-solid fa-trash text-[0.8em]"></i> Delete
+          </ActionBtn>
+        </div>
+      ),
     },
   ];
 

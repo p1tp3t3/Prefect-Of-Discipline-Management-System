@@ -1,8 +1,8 @@
-const Toast = ({ label, icon, closeToast }) => {
+const Toast = ({ label, icon: Icon, closeToast }) => {
     return (
         <div id="toast-default" className="flex items-center w-full max-w-xs px-4 py-6 text-gray-500 bg-gray-50 fixed left-[50%] rounded-lg shadow-sm dark:text-gray-400 dark:bg-gray-800 z-50" style={{ transform: 'translate(-50%, 15%)'}}>
             <div class="inline-flex items-center justify-center shrink-0 w-8 h-8 text-blue-500 bg-blue-100 rounded-lg dark:bg-blue-800 dark:text-blue-200">
-                <i className={`fa-solid ${icon}`}></i>
+                {Icon && <Icon size={16} />}
                 <span class="sr-only">Fire icon</span>
             </div>
             <div class="ms-3 text-sm font-normal">{label}</div>

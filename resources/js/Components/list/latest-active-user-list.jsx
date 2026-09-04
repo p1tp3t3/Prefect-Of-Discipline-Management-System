@@ -4,7 +4,7 @@ import { Link } from "@inertiajs/react"
 import AuthContext from "@/context-provider/auth-provider"
 import { useContext, useState, useEffect, useRef } from "react"
 import SearchBar from "../input/search-bar"
-import { APIRequest } from "@/others/classes/api-req"
+import { DashboardService } from "@/others/services/dashboard-service"
 
 const LatestActiveAccountList = ({ dataKey = 'active', ...props }) => {
     const { usr, onlineUserIds } = useContext(AuthContext)
@@ -19,17 +19,11 @@ const LatestActiveAccountList = ({ dataKey = 'active', ...props }) => {
         if (debounceRef.current) clearTimeout(debounceRef.current);
 
         debounceRef.current = setTimeout(() => {
-            const api = new APIRequest(
-                '/dashboard/active-users',
-                'get',
-                {},
-                (res) => {
-                    const fresh = res?.[dataKey] ?? [];
-                    setList(fresh);
-                    setUserList(search ? filterList(fresh, search) : fresh);
-                }
-            );
-            api.fetchData();
+            DashboardService.getActiveUsers((res) => {
+                const fresh = res?.[dataKey] ?? [];
+                setList(fresh);
+                setUserList(search ? filterList(fresh, search) : fresh);
+            });
         }, 800);
 
         return () => clearTimeout(debounceRef.current);

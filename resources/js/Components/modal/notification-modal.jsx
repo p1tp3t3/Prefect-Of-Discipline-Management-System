@@ -1,57 +1,45 @@
 import { useState, useEffect, useContext } from "react"
-import { APIRequest } from "@/others/classes/api-req"
+import { NotificationService } from "@/others/services/notification-service"
 import AuthContext from "@/context-provider/auth-provider"
 import { Link } from "@inertiajs/react"
 import NotificationList from "../list/notification-list"
-import TabBtn from "../button/tab-btn"
+import TabSwitcher from "../other/tab-switcher"
 import { motion } from "framer-motion"
+import { Check } from "lucide-react"
 
 const NotificationModal = (props) => {
 
     const [choose, setChoose] = useState('all')
-    const api = new APIRequest()
 
     const { usr } = useContext(AuthContext)
     const optionTab = [
-        { val: 'all', label: 'All' },
-        { val: 'unread', label: 'Unread' },
+        { key: 'all', label: 'All' },
+        { key: 'unread', label: 'Unread' },
     ]
-    
+
     const handlePaginate = () => {
-        api.setLink(`/api/notification/list/${choose}/${props.user.id}/${props.list.length + 2}`)
-        api.setMethod('get')
-        api.setSetter((e) => {
+        NotificationService.list(choose, props.user.id, props.list.length + 2, (e) => {
             props.setter[0](e.notif)
             props.setter[1](e.unread_count)
         })
-        api.fetchData()
     }
     const displayAll = (type) => {
         if(type != choose) {
-            const t = type == 'all' ? 'all' : 'unread'
-
             setChoose(type)
-            api.setLink(`/api/notification/list/${t}/${props.user.id}/4`)
         }
         props.setter[0](null)
         props.setter[1](0)
-        api.setMethod('get')
-        api.setSetter((e) => {
+        NotificationService.list(type == 'all' ? 'all' : 'unread', props.user.id, 4, (e) => {
             props.setter[0](e.notif)
             props.setter[1](e.unread_count)
             props.setter[2](e.size)
         })
-        api.fetchData()
     }
-    const markAllAsRead = () => {   
-        api.setLink('/notification/read')
-        api.setMethod('post')
-        api.setData({ type: 'select-all' })
-        api.setSetter((e) => {
+    const markAllAsRead = () => {
+        NotificationService.markAllAsRead((e) => {
             props.setter[0](e.notif)
             props.setter[1](e.unread_count)
         })
-        api.fetchData()
     }
 
 
@@ -71,17 +59,13 @@ const NotificationModal = (props) => {
                     <h1 className="text-[1.2em]"><b>Notifications</b></h1>
                     <div className="text-[0.9em]">
                         <button type="button" className="hover:underline" onClick={markAllAsRead}>
-                            <i className="fa-solid fa-check"></i> Mark All as Read
+                            <Check size={14} /> Mark All as Read
                         </button>
                     </div>
                 </div>
                 <div className="flex justify-between items-center">
                     <div className="text-[1em] flex gap-1 py-2">
-                        <TabBtn
-                            option={choose}
-                            list={optionTab}
-                            handleSelect={displayAll}
-                        />
+                        <TabSwitcher tabs={optionTab} value={choose} onChange={displayAll} />
                     </div>
                     <div className="text-[0.8em]">
                         <Link className="hover:underline" href="/notifications">

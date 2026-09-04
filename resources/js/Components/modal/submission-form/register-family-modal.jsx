@@ -4,10 +4,12 @@ import { useEffect, useMemo, useState } from "react"
 import FormTextfield from "@/Components/input/form-input"
 import ProfilePic from "@/Components/other/profile-pic"
 import FormButton from "@/Components/button/button"
-import { APIRequest } from "@/others/classes/api-req"
+import { FamilyService } from "@/others/services/family-service"
 import { getProfilePic, includeObjAtt, showOutputModal, showWarningModal, toTitleCase } from "@/others/function"
 import { Validator } from "@/others/classes/validator"
 import CheckBoxButton from "@/Components/input/checkbox"
+import TabSwitcher from "@/Components/other/tab-switcher"
+import { X } from "lucide-react"
 
 const RegisterFamilyModal = (props) => {
     const [activeTab, setActiveTab] = useState("register")
@@ -38,11 +40,8 @@ const RegisterFamilyModal = (props) => {
                     setSubmit(true)
                     props.reload?.(true, "text-wait", "Your request is processing...")
 
-                    const api = new APIRequest(
-                        "/student/family/join", // <-- CHANGE to your real join route
-                        "post",
-                        { family_id: familyId },
-                        () => {},
+                    FamilyService.joinFamily(
+                        familyId,
                         () => {
                             props.reload?.(true, "")
                             showOutputModal("Join request sent successfully.", "s", () => {
@@ -59,8 +58,6 @@ const RegisterFamilyModal = (props) => {
                             })
                         }
                     )
-
-                    api.sendPostData()
                 }
             )
         }
@@ -100,7 +97,6 @@ const RegisterFamilyModal = (props) => {
             return updated
         })
 
-        const link = "/student/family/register"
         const filterAtt = ["user_id"]
 
         const familyData = {
@@ -128,8 +124,7 @@ const RegisterFamilyModal = (props) => {
                     setSubmit(true)
                     props.reload?.(true, "text-wait", "Your Parent / Guardian Registration is Processing.")
 
-                    const api = new APIRequest(link, "post", familyData, () => {}, registerSuccess, registerError)
-                    api.sendPostData()
+                    FamilyService.registerFamily(familyData, registerSuccess, registerError)
                 }
             )
         }
@@ -184,26 +179,14 @@ const RegisterFamilyModal = (props) => {
                 </div>
 
                 <div className="w-full grid gap-3">
-                    <div className="flex bg-gray-100 rounded-lg p-1">
-                        <button
-                            type="button"
-                            onClick={() => setActiveTab("register")}
-                            className={`w-1/2 py-2 rounded-md text-[0.9em] transition ${
-                                activeTab === "register" ? "bg-white shadow font-semibold" : "text-gray-600"
-                            }`}
-                        >
-                            Register Family
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setActiveTab("join")}
-                            className={`w-1/2 py-2 rounded-md text-[0.9em] transition ${
-                                activeTab === "join" ? "bg-white shadow font-semibold" : "text-gray-600"
-                            }`}
-                        >
-                            Join Family
-                        </button>
-                    </div>
+                    <TabSwitcher
+                        tabs={[
+                            { key: "register", label: "Register Family" },
+                            { key: "join", label: "Join Family" },
+                        ]}
+                        value={activeTab}
+                        onChange={setActiveTab}
+                    />
                     <div className="flex items-center gap-2 text-[0.9em]">
                         <input type="checkbox" name="" id="view-info" onChange={(e) => viewInfo(e.target.checked)} />
                         <label htmlFor="view-info">View Info</label>
@@ -440,7 +423,7 @@ const SelectedUser = (props) => {
                                     className="bg-gray-300 relative top-[-0.3rem] z-[5] w-[1.2rem] h-[1.2rem] rounded-full text-[0.8em]"
                                     onClick={() => props.unselect(props.index)}
                                 >
-                                    <i className="fa-solid fa-xmark"></i>
+                                    <X size={12} />
                                 </button>
                             </div>
                         )}

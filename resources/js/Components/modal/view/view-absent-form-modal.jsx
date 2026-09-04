@@ -3,7 +3,7 @@ import ProfilePic from "../../other/profile-pic"
 import { useState, useEffect } from "react"
 import { getData, getProfilePic, readableDate, readableTime } from "../../../others/function"
 import CircleReload from "@/Components/reload/circle-reload"
-import { APIRequest } from "@/others/classes/api-req"
+import { AbsentFormService } from "@/others/services/absent-form-service"
 
 const ViewAbsentFormModal = (props) => {
 
@@ -20,8 +20,7 @@ const ViewAbsentFormModal = (props) => {
         }
     }, [props.close])
     const getAbsentFormInfo = () => {
-        const api = new APIRequest(`/absent-form/get/${props.id}`, 'post', {}, setData)
-        api.fetchData()
+        AbsentFormService.getAbsentFormInfo(props.id, setData)
     }
 
     return (
@@ -56,6 +55,10 @@ const Body = ({ data }) => {
                 <h1><b>{data.user.profile?.first_name}'s Absent Form</b></h1>
             </div>
             <div className="grid gap-5">
+                <div>
+                    <h2 className="text-lg font-semibold">Reference No.</h2>
+                    <p className="text-sm">{data.form_number}</p>
+                </div>
                 <div>
                     <h2 className="text-lg font-semibold">Reported Since</h2>
                     <p className="text-sm">{readableDate(data.created_at)} ({readableTime(data.created_at)})</p>

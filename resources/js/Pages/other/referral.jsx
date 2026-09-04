@@ -1,59 +1,25 @@
 import AuthLayout from "@/Layouts/auth-layout"
 import ReferralList from "@/Components/list/referral-list"
-import Reload from "@/Components/reload/reload"
-import IssueReferralModal from "@/Components/modal/submission-form/issue-referral-modal"
-import { useEffect, useState } from "react"
-import { Head } from "@inertiajs/react"
+import { useReload } from "@/context-provider/reload-provider"
+import { useState } from "react"
+import { Head, router } from "@inertiajs/react"
 import Btn from "@/Components/button/normal-btn"
 import ViewReferralModal from "@/Components/modal/view/view-referral-modal"
 
 const Referral = (props) => {
-    const [issueReferral, openIssueReferral] = useState(false),
-          [viewReferral, openViewReferral] = useState(false),
-          [reload, setReload] = useState(false),
-          
-          [reloadType, setReloadType] = useState(""),
-          [reloadLabel, setReloadLabel] = useState(""),
-          [id, setId] = useState(''),
+    const [viewReferral, openViewReferral] = useState(false),
+          [id, setId] = useState('')
 
-          [data, setData] = useState({
-              referrer_id: props.user.id,
-              referred_student_id: '',
-              referral_reason: ''
-          })
-    const isReload = () => {
-        return reload ? "opacity-1 z-50" : "opacity-0 z-[-1]";
-    }
+    const { loadRegister } = useReload()
+
     const setViewReferralId = (i) => {
         openViewReferral(true)
         setId(i)
     }
-    const loadRegister = (r, t, l) => {
-        setReload(r);
-        setReloadType(t);
-        setReloadLabel(l);
-    };
     return (
         <>
         <Head title="Referral" />
-        <Reload
-            transition={isReload()}
-            type={reloadType}
-            label={reloadLabel}
-            onClose={setReload}
-        />
-        <IssueReferralModal 
-            close={issueReferral} 
-            closeModal={openIssueReferral} 
-            pd={['px-10', 'py-7']}
-            isEnableOuterClose={true} 
-            setter={setData}
-            val={data}
-            reload={loadRegister}
-            student_list={props.students}
-            user={props.user}
-        />
-        <ViewReferralModal 
+        <ViewReferralModal
             close={viewReferral} 
             closeModal={openViewReferral} 
             pd={['px-10', 'py-7']}
@@ -69,7 +35,7 @@ const Referral = (props) => {
                     ?
                     <div>
                         <Btn
-                            onclick={() => openIssueReferral(true)}
+                            onclick={() => router.visit('/referral/report')}
                         >
                             Report Referral
                         </Btn>
@@ -81,7 +47,7 @@ const Referral = (props) => {
                         list={props.referral.data}
                         style={true}
                         viewReferral={setViewReferralId}
-                        type={props.user.user_type}
+                        type={props.user.role}
                     />
                 </div>
             </div>

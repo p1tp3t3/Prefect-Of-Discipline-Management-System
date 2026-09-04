@@ -2,9 +2,10 @@ import FormTextfield from "@/Components/input/form-input";
 import { change } from "@/others/function";
 import FormButton from "@/Components/button/button";
 import { useState } from "react";
-import { APIRequest } from "@/others/classes/api-req";
+import { PasswordRecoveryService } from "@/others/services/password-recovery-service";
 import { Link } from "@inertiajs/react";
 import { motion } from "framer-motion";
+import { User } from "lucide-react";
 
 const UsernameVerify = (props) => {
   const [usernameError, setError] = useState("");
@@ -19,15 +20,7 @@ const UsernameVerify = (props) => {
     const username = props.data.username.trim().toLowerCase();
 
     if (username) {
-      const api = new APIRequest(
-        `/contact/${username}`,
-        "post",
-        {},
-        props.setContact,
-        success,
-        error
-      );
-      api.fetchData();
+      PasswordRecoveryService.getContact(username, props.setContact, success, error);
     } else {
       setError("Username / User I.D is required");
     }
@@ -66,7 +59,7 @@ const UsernameVerify = (props) => {
             val={props.data.username}
             error={usernameError}
             errorAsterisk={usernameError === "Username / User I.D is required"}
-            icon="fa-solid fa-user"
+            icon={User}
             change={handleChange}
             req={true}
           />

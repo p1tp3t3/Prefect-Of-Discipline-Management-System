@@ -2,7 +2,7 @@ import axios from "axios";
 import CryptoJS from "crypto-js";
 import Swal from "sweetalert2";
 import withReactContent from "sweetalert2-react-content";
-import { APIRequest } from "./classes/api-req";
+import { PushNotificationService } from "./services/push-notification-service";
 
 const MySwal = withReactContent(Swal)
 const cryptoKey = 'gh4mdvcf'
@@ -188,6 +188,15 @@ export const userActivity = () => {
     changeUserActivityStatus('load', true)
     changeUserActivityStatus('beforeunload', false)
 }
+export function ordinal(n) {
+    const s = ["th", "st", "nd", "rd"];
+    const v = n % 100;
+    return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+export function canViewEnrollmentHistory(viewer) {
+    return ['super_admin', 'sub_admin'].includes(viewer?.role) ||
+        viewer?.teaching_staff?.position === 'program_head';
+}
 export function toTitleCase(str) {
     return str
             .replace(/_/g, " ")
@@ -278,6 +287,9 @@ export const getComplaintFolder = (id, caseNumber = null) => {
 }
 export function getProfilePic(file, sex) {
     return (file != null) ? `/storage/profile-pictures/${file}` : `/default-pic/profile-${sex === 'f' ? 'f' : 'm'}-pic.jpg`;
+}
+export function getProgramLogo(logo) {
+    return (logo != null) ? `/storage/program-logos/${logo}` : `/default-pic/sys-icon.png`;
 }
 /**
 const checkPath = () => {
@@ -381,18 +393,6 @@ export const check = (e, setter, type = 'val') => {
             [name]: Number(val)
         }))
     }
-}
-export const highlightNav = (l) => {
-    const container = document.querySelector('aside');
-    if (!container) return;
-    const list = container.querySelectorAll('.nav');
-
-    list.forEach((li) => {
-        li.classList.remove("bg-[#1e3a8a]", "hover:text-black");
-        if(l.includes(li.id)) {
-            li.classList.add("bg-[#1e3a8a]", "hover:text-black");
-        }
-    })
 }
 export const getWebLink = (
     protocol = 'http', 
@@ -540,7 +540,7 @@ export const checkUserExist = async (type, value, id = null) => {
 }
 export const checkCurrentPassword = async (id, value) => {
   try {
-    const response = await axios.get(`/api/password/verify/${value}/${id}`)
+    const response = await axios.get(`/api/password/verify/${encodeURIComponent(value)}/${id}`)
     return response.data
   } catch (err) {
     console.error("Error checking user:", err)
@@ -631,7 +631,8 @@ export function canEdit(targetRole, userRole) {
     return allowed.includes(targetRole);
 }
 
-export const registerServiceWorker = () => {
+export const registerServiceWorker = (vapidPublicKey) => {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window) || !vapidPublicKey) return;
 
     navigator.serviceWorker.register("/sw.js");
     Notification.requestPermission().then((permission)=> {
@@ -641,8 +642,8 @@ export const registerServiceWorker = () => {
                 // subscribe
                 sw.pushManager.subscribe({
                     userVisibleOnly: true,
-                    applicationServerKey: "BMCxGMFxaK7cvQ2p0vFXWVXV8TryE5qHXRsutz52B-WdQ7tNgh8rkjyiiMBQUq4g3E6JVY3qjtub_-cHwEgDxJ0"
-                }).then((subscription)=> {                    
+                    applicationServerKey: vapidPublicKey
+                }).then((subscription)=> {
                     const sub = JSON.parse(JSON.stringify(subscription))
 
                     const data = {
@@ -651,11 +652,7 @@ export const registerServiceWorker = () => {
                         auth: sub.keys.auth
                     }
                     const f = e => console.log('go')
-                    const api = new APIRequest('/store-subscription', 'post', data, f, f, f)
-                    api.setHeaders({
-                        'Content-Type': 'application/json',
-                    })
-                    api.sendPostData()
+                    PushNotificationService.storeSubscription(data, f, f)
                 }).catch(x => console.log(x));
             });
         }

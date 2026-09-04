@@ -5,6 +5,7 @@ import ProfilePic from "../other/profile-pic";
 import {
   checkActiveStatus,
   getProfilePic,
+  getYearLevel,
   readableActiveDuration,
   readableDate,
   readableTime,
@@ -23,7 +24,10 @@ const StudentList = ({ list = null, style = true, type = "prefect", paginate = t
     const latestEnrollment = user.enrollments?.[user.enrollments.length - 1];
 
     const fullName = `${user.profile?.first_name || ""} ${user.profile?.middle_name || ""} ${user.profile?.last_name || ""}`;
-    const program = user.program?.name || "";
+    const programName = user.program?.name || "";
+    const program = [programName, latestEnrollment?.year_level ? getYearLevel(latestEnrollment.year_level) : null]
+      .filter(Boolean)
+      .join(" • ");
     const schoolYear = latestEnrollment?.school_year || "N / A";
 
     return {
@@ -119,22 +123,24 @@ const StudentList = ({ list = null, style = true, type = "prefect", paginate = t
     <Box
       className={
         style
-          ? "w-full px-5 py-3 bg-white rounded-md shadow-black/20 shadow-sm"
-          : ""
+          ? "w-full px-5 py-3 bg-white rounded-md shadow-black/20 shadow-sm overflow-x-auto"
+          : "overflow-x-auto"
       }
       sx={{ width: "100%" }}
     >
-      <DataGrid
-        rows={rows}
-        columns={columns}
-        disableRowSelectionOnClick
-        hideFooterSelectedRowCount
-        pagination
-        pageSizeOptions={[20, 50, 100, 200]}
-        initialState={{ pagination: { paginationModel: { page: 0, pageSize: 20 } } }}
-        showToolbar
-        getRowId={(row) => row.id}
-      />
+      <Box sx={{ minWidth: "1000px" }}>
+        <DataGrid
+          rows={rows}
+          columns={columns}
+          disableRowSelectionOnClick
+          hideFooterSelectedRowCount
+          pagination
+          pageSizeOptions={[20, 50, 100, 200]}
+          initialState={{ pagination: { paginationModel: { page: 0, pageSize: 20 } } }}
+          showToolbar
+          getRowId={(row) => row.id}
+        />
+      </Box>
     </Box>
   );
 };

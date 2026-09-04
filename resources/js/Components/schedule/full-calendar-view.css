@@ -1,0 +1,58 @@
+.appointment-fullcalendar .fc {
+    --fc-border-color: #e5e7eb;
+    --fc-page-bg-color: #ffffff;
+    --fc-neutral-bg-color: #f9fafb;
+    --fc-today-bg-color: #eff6ff;
+    font-family: inherit;
+}
+
+.appointment-fullcalendar .fc-theme-standard td,
+.appointment-fullcalendar .fc-theme-standard th {
+    border-color: var(--fc-border-color);
+}
+
+.appointment-fullcalendar .fc-col-header-cell {
+    background-color: #f9fafb;
+    padding: 0.6rem 0;
+}
+
+.appointment-fullcalendar .fc-col-header-cell-cushion {
+    font-size: 0.8em;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+}
+
+.appointment-fullcalendar .fc-daygrid-day-number {
+    font-size: 0.85em;
+    color: #374151;
+    padding: 0.4rem;
+}
+
+.appointment-fullcalendar .fc-day-today .fc-daygrid-day-number {
+    color: #1d4ed8;
+    font-weight: 700;
+}
+
+.appointment-fullcalendar .fc-event {
+    border-radius: 0.375rem;
+    border-width: 0;
+    padding: 1px 6px;
+    font-size: 0.78em;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.appointment-fullcalendar .fc-daygrid-event-dot {
+    display: none;
+}
+
+.appointment-fullcalendar .fc-timegrid-slot-label {
+    font-size: 0.75em;
+    color: #6b7280;
+}
+
+.appointment-fullcalendar .fc-scrollgrid {
+    border-radius: 0.5rem;
+    overflow: hidden;
+}

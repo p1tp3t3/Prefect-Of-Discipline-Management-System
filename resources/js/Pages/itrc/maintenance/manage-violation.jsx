@@ -1,8 +1,9 @@
-import { APIRequest } from "@/others/classes/api-req";
-import { readableDate, readableTime, showWarningModal, toTitleCase } from "@/others/function";
+import { ViolationService } from "@/others/services/violation-service";
+import { readableDate, readableTime, showWarningModal, toTitleCase, ordinal } from "@/others/function";
 import ActionBtn from "@/Components/button/action-btn";
 import { DataGrid } from "@mui/x-data-grid";
 import { Box } from "@mui/material";
+import { router } from "@inertiajs/react";
 
 const ManageViolation = ({ list, events, reload, setter }) => {
     const deleteViolation = (e) => {
@@ -12,10 +13,8 @@ const ManageViolation = ({ list, events, reload, setter }) => {
             "Cancel",
             () => {
                 reload(true, "text-wait", "Deleting Violation...");
-                const api = new APIRequest(
-                    "/maintenance/violation/delete",
-                    "post",
-                    { id: e.id },
+                ViolationService.deleteViolation(
+                    e.id,
                     setter,
                     () => {
                         reload(true, "success", "Violation Deleted Successfully");
@@ -24,13 +23,12 @@ const ManageViolation = ({ list, events, reload, setter }) => {
                         reload(true, "error", err.response.data.message);
                     }
                 );
-                api.fetchData();
             }
         );
     };
 
     return (
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 min-w-0 overflow-y-auto">
 
             {/* Toolbar */}
             <div className="flex justify-end mb-4">
@@ -105,13 +103,13 @@ const ManageViolation = ({ list, events, reload, setter }) => {
                                             {[1, 2, 3, 4, 5, 6].map((occ) => {
                                                 const penaltiesForOcc = row.penalties
                                                     ?.filter((p) => p.occurrence == occ)
-                                                    .map((p) => p.penalty_description) ?? [];
+                                                    .map((p) => p.penalty?.description) ?? [];
 
                                                 if (penaltiesForOcc.length === 0) return null;
 
                                                 return (
                                                     <div key={occ} className="text-[0.8em]">
-                                                        <b>{occ} Offense:</b>
+                                                        <b>{ordinal(occ)} Offense:</b>
                                                         <div className="flex gap-1 flex-wrap mt-1">
                                                             {penaltiesForOcc.map((desc, j) => (
                                                                 <span
@@ -139,12 +137,18 @@ const ManageViolation = ({ list, events, reload, setter }) => {
                                     field: "actions",
                                     type: "actions",
                                     headerName: "Action",
-                                    width: 160,
+                                    width: 240,
                                     sortable: false,
                                     headerAlign: "left",
                                     align: "left",
                                     renderCell: ({ row }) => (
                                         <div className="flex gap-2 items-center h-full py-2">
+                                            <ActionBtn
+                                                className="bg-gray-600 hover:bg-gray-700"
+                                                onClick={() => router.visit(`/violation-management/${row.id}/students`)}
+                                            >
+                                                View
+                                            </ActionBtn>
                                             <ActionBtn
                                                 className="bg-blue-600 hover:bg-blue-700"
                                                 onClick={() => events[0]("violation", "edit", row)}

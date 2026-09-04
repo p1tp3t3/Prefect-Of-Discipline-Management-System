@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Modules\Referral;
 
 use App\Events\SendReferral;
 use App\Http\Controllers\Controller;
-use App\Http\Controllers\Modules\Account\AccountController;
-use App\Http\Controllers\NotificationController;
+use App\Http\Requests\Referral\StoreReferralRequest;
+use App\Http\Resources\ReferralResource;
 use App\Mail\ReferralMail;
 use App\Models\ActionLog;
 use App\Models\Referral;
@@ -27,16 +27,15 @@ class ReferralController extends Controller
     use GeneratesSequenceCode;
 
     public function index() {
-        $account = new AccountController();
         $isPrefect = self::isPrefect() ? 'prefect' : 'other';
         $props = [
             'user' => auth()->user(),
-            'students' => User::with('program')
+            'students' => User::with(['profile', 'program'])
                             ->where('role', 'student')
                             ->where('id', '!=', auth()->user()->id)
                             ->get(),
             'referral' => self::getAllReferral(),
-            'program_name' => $account->isProgramHead()
+            'program_name' => is_program_head()
         ];
         $props = !self::isPrefect() ? $props : array_merge($props, [
             'referral_request' => self::getReferralRequest(),
@@ -45,7 +44,18 @@ class ReferralController extends Controller
         return Inertia::render("$isPrefect/referral", $props);
     }
 
-    public function store(Request $request)
+    public function create() {
+        return Inertia::render('referral/report-referral', [
+            'user' => auth()->user(),
+            'students' => User::with(['profile', 'program'])
+                            ->where('role', 'student')
+                            ->where('id', '!=', auth()->user()->id)
+                            ->get(),
+            'back_url' => self::isPrefect() ? '/prefect/referrals' : '/referral',
+        ]);
+    }
+
+    public function store(StoreReferralRequest $request)
     {
         DB::beginTransaction(); // ✅ Start transaction
         $output = null; // File path tracker for cleanup if fails
@@ -57,8 +67,6 @@ class ReferralController extends Controller
                     'message' => 'You are being restricted for submitting referral'
                 ], 400);
             }
-
-            $notification = new NotificationController();
 
             $field = [
                 'program_head_id' => $request->referrer_id,
@@ -95,7 +103,7 @@ class ReferralController extends Controller
                     'url' => '',
                 ];
 
-                $notification->notifySingleUser(
+                notify_single_user(
                     self::getReferralNotifMessageReportFields($request, $prefect, $lastIndex, $referral),
                     $webpushNotif,
                     new SendReferral($prefect->id)
@@ -191,10 +199,10 @@ class ReferralController extends Controller
             $referrals->whereNull('confirmed_at')->latest('created_at');
         }
 
-        return $referrals->paginate(20);
+        return ReferralResource::collection($referrals->paginate(20));
     }
     public function getReferralRequest() {
-        return Referral::with([
+        return ReferralResource::collection(Referral::with([
                     'user.profile',
                     'user.teachingStaff.program',
                     'referredStudent.profile',
@@ -202,10 +210,9 @@ class ReferralController extends Controller
                 ])
                 ->whereNot('confirmed_at', NULL)
                 ->latest('created_at')
-                ->get();
+                ->get());
     }
     public function confirmReferral($id)  {
-        $notification = new NotificationController();
 
         Referral::where('id', $id)->update([
             'confirmed_at'  => now(),
@@ -230,7 +237,7 @@ class ReferralController extends Controller
             'url' => '',
         ];
 
-        $notification->notifySingleUser(
+        notify_single_user(
             self::getReferralNotifMessageResponseFields($referral),
             $webpushNotif,
         );
@@ -329,7 +336,7 @@ class ReferralController extends Controller
     }
 
     public function get($id) {
-        return Referral::with([
+        return new ReferralResource(Referral::with([
                     'user.profile',
                     'user.teachingStaff.program',
                     'referredStudent.profile',
@@ -338,10 +345,10 @@ class ReferralController extends Controller
                     'referralReferredStudent.user.program',
                 ])
                ->where('id', $id)
-               ->first();
+               ->first());
     }
     public function getSendReferral() {
-        return Referral::all()->toArray();
+        return ReferralResource::collection(Referral::all());
     }
     private function isPrefect() {
         return auth()->user()->role == 'sub_admin';

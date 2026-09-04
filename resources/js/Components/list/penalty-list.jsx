@@ -1,64 +1,62 @@
 import { useEffect, useState } from "react"
-import CircleReload from "../reload/circle-reload"
+import ListSkeleton from "../reload/list-skeleton"
 import { toTitleCase } from "@/others/function"
-import { APIRequest } from "@/others/classes/api-req";
-const PenaltyList = () => {
-    const [penaltyList, setPenaltyList] = useState(null);
+import { ViolationService } from "@/others/services/violation-service";
+import { Table, TableHead, TableBody, TableRow, TableCell } from "@mui/material"
+const PenaltyList = ({ list = null }) => {
+    const [penaltyList, setPenaltyList] = useState(list);
 
     useEffect(() => {
-        const api = new APIRequest('/api/penalty-list', 'get', {}, setPenaltyList)
-        api.fetchData()
+        // Prefect dashboard passes the list down from the controller;
+        // fall back to fetching it only when no list prop was given.
+        if (list != null) return;
+
+        ViolationService.getPenaltyList(setPenaltyList)
     }, []);
 
     return (
         <div className="w-full px-5 py-3 bg-white rounded-md shadow-black/20 shadow-sm">
-            <table className="w-full border-collapse text-left">
-                <thead>
-                    <tr>
-                        <th className="py-2 border-b">#</th>
-                        <th className="py-2 border-b">Penalty Name</th>
-                    </tr>
-                </thead>
+            <Table sx={{ width: "100%" }}>
+                <TableHead>
+                    <TableRow>
+                        <TableCell sx={{ borderBottom: "1px solid #e5e7eb" }}>#</TableCell>
+                        <TableCell sx={{ borderBottom: "1px solid #e5e7eb" }}>Penalty Name</TableCell>
+                    </TableRow>
+                </TableHead>
 
-                <tbody>
+                <TableBody>
                     {penaltyList ? (
                         penaltyList.length !== 0 ? (
                             penaltyList.map((e, i) => <Row key={i} i={i} data={e} />)
                         ) : (
-                            <tr>
-                                <td colSpan={4}>
-                                    <div className="flex justify-center items-center w-full py-10 text-[0.9em]">
-                                        No Penalty Yet
-                                    </div>
-                                </td>
-                            </tr>
+                            <TableRow>
+                                <TableCell align="center" sx={{ py: 5, fontSize: "0.9em" }} colSpan={2}>
+                                    No Penalty Yet
+                                </TableCell>
+                            </TableRow>
                         )
                     ) : (
-                        <tr>
-                            <td colSpan={4}>
+                        <TableRow>
+                            <TableCell colSpan={2}>
                                 <div className="flex justify-center items-center w-full py-10 text-[0.9em]">
-                                    <CircleReload size={3} />
+                                    <ListSkeleton rows={3} />
                                 </div>
-                            </td>
-                        </tr>
+                            </TableCell>
+                        </TableRow>
                     )}
-                </tbody>
-            </table>
+                </TableBody>
+            </Table>
         </div>
     );
 };
 
 const Row = ({ i, data }) => {
     return (
-        <tr className="border-b text-[0.9em]">
-            <td className="py-2">{i + 1}.</td>
-            <td className="py-2">{toTitleCase(data.description)}</td>
-        </tr>
+        <TableRow>
+            <TableCell sx={{ fontSize: "0.9em" }}>{i + 1}.</TableCell>
+            <TableCell sx={{ fontSize: "0.9em" }}>{toTitleCase(data.description)}</TableCell>
+        </TableRow>
     );
 };
 
 export default PenaltyList;
-
-
-
-

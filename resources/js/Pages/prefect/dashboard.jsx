@@ -9,18 +9,19 @@ import AbsentFormList from "@/Components/list/absent-form-list"
 import StudentList from "@/Components/list/student-list"
 import { useEffect, useState } from "react"
 import { getWebLink, showWarningModal, toTitleCase } from "@/others/function"
-import { APIRequest } from "@/others/classes/api-req"
+import { DashboardService } from "@/others/services/dashboard-service"
 import BarGraph from "@/Components/card/bar-graph-statistic-card"
 import AppointmentTodayList from "@/Components/list/appointment-today-list"
 import NewStudentList from "@/Components/list/new-student-list"
 import StudentNotificationList from "@/Components/list/student-notification-list"
-import TabBtn from "@/Components/button/tab-btn"
+import TabSwitcher from "@/Components/other/tab-switcher"
 import UnresolvedComplaintModal from "@/Components/modal/validation/unresolved-complaint-modal"
 import { Link, router } from "@inertiajs/react"
 import LatestActiveAccountList from "@/Components/list/latest-active-user-list"
 import OffenseList from "@/Components/list/offense-list"
 import PenaltyList from "@/Components/list/penalty-list"
 import { motion } from "framer-motion"
+import { GraduationCap, Hourglass, RefreshCw, FileText, Archive } from "lucide-react"
 
 const PrefectDashBoard = (props) => {
   const date = new Date()
@@ -106,9 +107,9 @@ const PrefectDashBoard = (props) => {
   }
 
   const optionTab1 = [
-    { val: "student", label: "New Students" },
-    { val: "appointment", label: "Scheduled Appointment Today" },
-    { val: "notification", label: "Notification" },
+    { key: "student", label: "New Students" },
+    { key: "appointment", label: "Scheduled Appointment Today" },
+    { key: "notification", label: "Notification" },
   ]
 
   const optionTab2 = [
@@ -144,12 +145,7 @@ const PrefectDashBoard = (props) => {
         ? currentYear
         : timeline
 
-    const link = `/api/bargraph`,
-      data = {
-        filter: [selectedTitle, selectedRange, timeline],
-      }
-    const api = new APIRequest(link, "post", data, setBargraphComplaint)
-    api.fetchData()
+    DashboardService.getBargraph([selectedTitle, selectedRange, timeline], setBargraphComplaint)
   }, [selectedTitle, selectedRange, timeline])
 
   const yearDropdown = () => {
@@ -190,9 +186,9 @@ const PrefectDashBoard = (props) => {
   }
 
   const optionTab = [
-    { val: "overview", label: "Overview" },
-    { val: "offense", label: "List of Offenses" },
-    { val: "penalty", label: "List of Penalties" },
+    { key: "overview", label: "Overview" },
+    { key: "offense", label: "List of Offenses" },
+    { key: "penalty", label: "List of Penalties" },
   ]
 
   /*
@@ -208,7 +204,7 @@ const PrefectDashBoard = (props) => {
     <>
         <div className="w-full py-10">
           <div>
-            <TabBtn list={optionTab} option={choose2} handleSelect={handleSelect2} />
+            <TabSwitcher tabs={optionTab} value={choose2} onChange={handleSelect2} />
           </div>
 
           {/* Overview Section */}
@@ -225,7 +221,7 @@ const PrefectDashBoard = (props) => {
                     <QuantityCard
                       h="h-[6rem]"
                       num={props.student}
-                      icon="fa-user-graduate"
+                      icon={GraduationCap}
                       label="Total Enrolled Students"
                       color={{ bg: "bg-white hover:bg-black/5 transition-all" }}
                     />
@@ -234,7 +230,7 @@ const PrefectDashBoard = (props) => {
                     <QuantityCard
                       h="h-[6rem]"
                       num={props.pending_complaint}
-                      icon="fa-hourglass-half"
+                      icon={Hourglass}
                       label="Total Pending Complaints"
                       color={{ bg: "bg-white hover:bg-black/5 transition-all" }}
                     />
@@ -243,7 +239,7 @@ const PrefectDashBoard = (props) => {
                     <QuantityCard
                       h="h-[6rem]"
                       num={props.ongoing_complaint}
-                      icon="fa-refresh"
+                      icon={RefreshCw}
                       label="Total Ongoing Complaints"
                       color={{ bg: "bg-white hover:bg-black/5 transition-all" }}
                     />
@@ -252,7 +248,7 @@ const PrefectDashBoard = (props) => {
                     <QuantityCard
                       h="h-[6rem]"
                       num={props.referral}
-                      icon="fa-file"
+                      icon={FileText}
                       label="Total Referrals"
                       color={{ bg: "bg-white hover:bg-black/5 transition-all" }}
                     />
@@ -261,7 +257,7 @@ const PrefectDashBoard = (props) => {
                     <QuantityCard
                       h="h-[6rem]"
                       num={props.archive}
-                      icon="fa-archive"
+                      icon={Archive}
                       label="Total Documents"
                       color={{ bg: "bg-white hover:bg-black/5 transition-all" }}
                     />
@@ -354,12 +350,7 @@ const PrefectDashBoard = (props) => {
                 <div className="flex flex-col lg:flex-row gap-3">
                   <div className="w-full bg-white rounded-md shadow-md">
                     <div className="px-5 py-3 w-full">
-                      <TabBtn
-                        list={optionTab1}
-                        option={choose}
-                        handleSelect={handleSelect}
-                        className="h-[1.8rem]"
-                      />
+                      <TabSwitcher tabs={optionTab1} value={choose} onChange={handleSelect} />
                     </div>
                     {choose == "student" && (
                       <NewStudentList list={props.students} />
@@ -385,7 +376,7 @@ const PrefectDashBoard = (props) => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, ease: "easeOut" }}
             >
-              <OffenseList />
+              <OffenseList list={props.offense_list} />
             </motion.div>
           )}
           {choose2 == "penalty" && (
@@ -395,7 +386,7 @@ const PrefectDashBoard = (props) => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, ease: "easeOut" }}
             >
-              <PenaltyList />
+              <PenaltyList list={props.penalty_list} />
             </motion.div>
           )}
         </div>

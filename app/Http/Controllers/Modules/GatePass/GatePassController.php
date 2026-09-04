@@ -4,8 +4,9 @@ namespace App\Http\Controllers\Modules\GatePass;
 
 use App\Events\SendGatePass;
 use App\Http\Controllers\Controller;
-use App\Http\Controllers\Modules\Account\AccountController;
-use App\Http\Controllers\NotificationController;
+use App\Http\Requests\GatePass\ApproveGatePassRequest;
+use App\Http\Requests\GatePass\GatepassRequestRequest;
+use App\Http\Resources\GatePassResource;
 use App\Mail\GatePassMail;
 use App\Models\ActionLog;
 use App\Models\GatePass;
@@ -22,7 +23,6 @@ class GatePassController extends Controller
 {
     public function index() {
         $isPrefect = self::isPrefect() ? 'prefect' : 'other';
-        $account = new AccountController();
 
         $guard = User::where('role', 'guard')
                      ->where('id', auth()->user()->id);
@@ -42,14 +42,12 @@ class GatePassController extends Controller
 
         return Inertia::render("$isPrefect/gatepass", [
             'user' => ($guard->exists()) ? $guard->first() : auth()->user(),
-            'program_name' => $account->isProgramHead(),
+            'program_name' => is_program_head(),
             'gatepass_request_list' => $gatepass,
             'user_gatepass' => self::getGatePass(auth()->user()->id)
         ]);
     }
     public function qrcodeIndex() {
-        $account = new AccountController();
-
         return Inertia::render('staff/gatepass-verification', [
             'user' => auth()->user(),
             'program_name' => null,
@@ -68,8 +66,7 @@ class GatePassController extends Controller
             'gatepass_approved_list' => self::getAllGatePass()->get()
         ]);
     }
-    public function gatepassRequest(Request $request) {
-        $notification =  new NotificationController();
+    public function gatepassRequest(GatepassRequestRequest $request) {
         $senderName =  auth()->user()->profile?->first_name . ' ' .  auth()->user()->profile?->last_name;
         $prefectId = User::where('role', 'sub_admin')->first()?->id;
         $webpushNotif = [
@@ -96,7 +93,7 @@ class GatePassController extends Controller
                 'user_id' => auth()->user()->id,
                 'reason' =>  $request->other_reason
             ]);
-            $notification->notifySingleUser(
+            notify_single_user(
                 self::getGatePassRequestNotif($lastIndex, $prefectId),
                 $webpushNotif,
                 new SendGatePass($prefectId)
@@ -113,10 +110,9 @@ class GatePassController extends Controller
             return response()->json(['message' => $x->getMessage()], 400);
         }
     }
-    public function approveGatePassRequest($id) {
+    public function approveGatePassRequest($id, ApproveGatePassRequest $request) {
         $gatepass = GatePass::with(['user.profile', 'user.program'])->where('id', $id);
         $expDate = request('expiration_date');
-        $notification =  new NotificationController();
 
 
         DB::beginTransaction();
@@ -158,7 +154,7 @@ class GatePassController extends Controller
             ];
             $gatepass = $gatepass->first();
 
-            $notification->notifySingleUser(
+            notify_single_user(
                 self::getGatePassResponseNotif($gatepass->user_id, $dataNotif),
                 $webpushNotif,
                 new SendGatePass($gatepass->user_id)
@@ -205,7 +201,7 @@ class GatePassController extends Controller
                         ->where('id', $id)
                         ->get();
 
-        return response()->json($data);
+        return GatePassResource::collection($data);
     }
 
 
@@ -223,10 +219,10 @@ class GatePassController extends Controller
         return auth()->user()->role == 'sub_admin';
     }
     public function getAllGatePassRequest() {
-        return GatePass::with(['user.profile', 'user.program'])
+        return GatePassResource::collection(GatePass::with(['user.profile', 'user.program'])
                        ->where('confirmed_at', NULL)
                        ->latest('created_at')
-                       ->get();
+                       ->get());
     }
     public function getAllGatePass() {
 
@@ -269,7 +265,8 @@ class GatePassController extends Controller
                 ->where('date_expiration', '<=', now())
                 ->latest()
                 ->limit(1)
-        );
+        )
+        ->get();
     }
     public function getGatePassRequestNotif($id, $receiver) {
         $user = auth()->user();

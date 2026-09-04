@@ -2,13 +2,14 @@ import QuantityCard from "@/Components/card/qntty-statistic-card";
 import AuthLayout from "@/Layouts/auth-layout";
 import "../style.css";
 import AppointmentScheduleList from "@/Components/list/upcoming-sched-list";
-import TabBtn from "@/Components/button/tab-btn";
+import TabSwitcher from "@/Components/other/tab-switcher";
 import OffenseList from "@/Components/list/offense-list";
 import { Link } from "@inertiajs/react";
 import IncidentRiskCard from "@/Components/card/incident-risk-card";
 import { useState } from "react";
 import PenaltyList from "@/Components/list/penalty-list";
 import { motion } from "framer-motion";
+import { FileText } from "lucide-react";
 
 const StudentDashboard = (props) => {
   const [choose, setChoose] = useState("overview");
@@ -18,9 +19,9 @@ const StudentDashboard = (props) => {
   };
 
   const optionTab = [
-    { val: "overview", label: "Overview" },
-    { val: "offense", label: "List of Offenses" },
-    { val: "penalty", label: "List of Penalties" },
+    { key: "overview", label: "Overview" },
+    { key: "offense", label: "List of Offenses" },
+    { key: "penalty", label: "List of Penalties" },
   ];
 
   return (
@@ -32,7 +33,7 @@ const StudentDashboard = (props) => {
       >
         {/* === Tab Buttons === */}
         <div className="mb-6">
-          <TabBtn list={optionTab} option={choose} handleSelect={handleSelect} />
+          <TabSwitcher tabs={optionTab} value={choose} onChange={handleSelect} />
         </div>
 
         {/* === OVERVIEW TAB === */}
@@ -44,7 +45,7 @@ const StudentDashboard = (props) => {
                 <QuantityCard
                   h="h-[9rem]"
                   num={props.complaint}
-                  icon="fa-file"
+                  icon={FileText}
                   textColor="text-green-700"
                   label="Total Complaints"
                   color={{

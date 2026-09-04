@@ -7,7 +7,7 @@
   body {
     font-family: DejaVu Sans, sans-serif;
     font-size: 12px;
-    margin: 25px;
+    margin: 12px;
     color: #222;
   }
 
@@ -123,12 +123,57 @@
     font-weight: bold;
   }
 
-  /* --- FOOTER --- */
-  footer {
-    margin-top: 25px;
-    font-size: 11px;
-    text-align: right;
+  /* --- SUMMARY --- */
+  .summary-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 14px;
+  }
+
+  .summary-box {
+    flex: 1;
+    text-align: center;
+    background-color: #f3f7fb;
+    border: 1px solid #003366;
+    border-radius: 4px;
+    padding: 8px;
+  }
+
+  .summary-count {
+    display: block;
+    font-size: 20px;
+    font-weight: bold;
+    color: #003366;
+  }
+
+  .summary-label {
+    display: block;
+    font-size: 10.5px;
     color: #555;
+  }
+
+  /* --- FOOTER / SIGNATURE --- */
+  .footer {
+    margin-top: 40px;
+    display: flex;
+    gap: 30px;
+  }
+
+  .sig {
+    flex: 1;
+    text-align: center;
+  }
+
+  .sig .line {
+    border-top: 1px solid #444;
+    margin-bottom: 4px;
+    margin-top: 30px;
+  }
+
+  .sig p {
+    margin: 0;
+    font-size: 11px;
+    color: #444;
   }
 
   hr {
@@ -158,8 +203,12 @@
   <div class="title-box">
     <h2>Student Incident Report</h2>
     <div style="font-size: 11px; color: #555;">
-      From <strong>{{ \Carbon\Carbon::parse($from)->format('F d, Y') }}</strong> 
-      to <strong>{{ \Carbon\Carbon::parse($to)->format('F d, Y') }}</strong>
+      @if(!empty($school_year))
+        School Year <strong>{{ $school_year }}</strong>
+      @else
+        From <strong>{{ \Carbon\Carbon::parse($from)->format('F d, Y') }}</strong>
+        to <strong>{{ \Carbon\Carbon::parse($to)->format('F d, Y') }}</strong>
+      @endif
     </div>
   </div>
 
@@ -189,41 +238,137 @@
     </table>
   </div>
 
+  {{-- SUMMARY --}}
+  @if($type == 'incident')
+    @php
+      $totalIncidents = count($data);
+      $totalViolations = collect($data)->sum(fn($inc) => count($inc['violations']));
+    @endphp
+    <div class="summary-row">
+      <div class="summary-box">
+        <span class="summary-count">{{ $totalIncidents }}</span>
+        <span class="summary-label">Total Incident{{ $totalIncidents == 1 ? '' : 's' }}</span>
+      </div>
+      <div class="summary-box">
+        <span class="summary-count">{{ $totalViolations }}</span>
+        <span class="summary-label">Total Violation{{ $totalViolations == 1 ? '' : 's' }} Charged</span>
+      </div>
+    </div>
+  @endif
+
   {{-- INCIDENT RECORDS --}}
   <h4 style="margin-top:15px; color:#003366;">Incident Records</h4>
-  <table class="incidents">
-    <thead>
-      <tr>
-        <th style="width:4%;">#</th>
-        @if(request('type') == 'incident')
-          <th style="width:18%;">Complainant Name</th>
-          <th style="width:12%;">Incident Reported</th>
-        @else
-          <th style="width:12%;">Violation</th>
-          <th style="width:12%;">Status</th>
-        @endif
-        <th style="width:15%;">Date / Time</th>
-      </tr>
-    </thead>
-    <tbody>
-      @forelse ($data as $d)
+
+  @if($type == 'incident')
+    @forelse ($data as $incident)
+      <table class="incidents" style="margin-top: {{ $loop->first ? '0' : '14px' }};">
+        <thead>
+          <tr>
+            <th style="width:5%;">#</th>
+            <th style="width:14%;">Student ID</th>
+            <th style="width:15%;">Complaint No.</th>
+            <th style="width:14%;">Case No.</th>
+            <th style="width:32%;">Incident</th>
+            <th>Date / Time</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>{{ $incident['i'] }}</td>
+            <td>{{ $incident['student_id'] }}</td>
+            <td>{{ $incident['complaint_number'] }}</td>
+            <td>{{ $incident['case_number'] }}</td>
+            <td>{{ $incident['incident'] }}</td>
+            <td>{{ $incident['date_time'] }}</td>
+          </tr>
+          <tr>
+            <td colspan="6" style="padding:0;">
+              <table style="width:100%; border-collapse:collapse;">
+                <thead>
+                  <tr>
+                    <th style="width:50%; background-color:#f3f7fb; color:#003366;">Violation</th>
+                    <th style="width:15%; background-color:#f3f7fb; color:#003366;">Occurrence</th>
+                    <th style="background-color:#f3f7fb; color:#003366;">Penalty</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @forelse ($incident['violations'] as $v)
+                    <tr>
+                      <td>{{ $v['violation_name'] }}</td>
+                      <td>{{ $v['occurrence'] }}</td>
+                      <td>{{ $v['penalty'] }}</td>
+                    </tr>
+                  @empty
+                    <tr>
+                      <td colspan="3" style="text-align:center; color:#888; font-style:italic;">No violation formally charged for this incident.</td>
+                    </tr>
+                  @endforelse
+                </tbody>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td colspan="6" style="background-color:#fbfcfe; font-size:10.5px; color:#444;">
+              <strong>Reported By:</strong> {{ $incident['complainant'] }}
+              &nbsp;&nbsp;|&nbsp;&nbsp;
+              <strong>Resolved On:</strong> {{ $incident['resolved_at'] }}
+              @if(!empty($incident['summary']))
+                <br><strong>Prefect's Remark:</strong> {{ $incident['summary'] }}
+              @endif
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    @empty
+      <table class="incidents">
+        <tbody>
+          <tr>
+            <td style="text-align:center; padding:10px;">No incident records found.</td>
+          </tr>
+        </tbody>
+      </table>
+    @endforelse
+
+    {{-- SIGNATURE --}}
+    <div class="footer">
+      <div class="sig">
+        <div class="line"></div>
+        <p>Prefect of Discipline</p>
+      </div>
+      <div class="sig">
+        <div class="line"></div>
+        <p>Date Generated: {{ now()->format('F j, Y g:i A') }}</p>
+      </div>
+    </div>
+  @else
+    <table class="incidents">
+      <thead>
         <tr>
-          <td>{{ $d['i'] }}</td>
-          @if(request('type') == 'incident')
-            <td>{{ $d['complainant_name'] }}</td>
-            <td>{{ $d['incident'] }}</td>
-          @else
+          <th style="width:4%;">#</th>
+          <th style="width:16%;">Violation</th>
+          <th style="width:10%;">Status</th>
+          <th style="width:10%;">Occurrence</th>
+          <th style="width:20%;">Penalty</th>
+          <th style="width:15%;">Date / Time</th>
+        </tr>
+      </thead>
+      <tbody>
+        @forelse ($data as $d)
+          <tr>
+            <td>{{ $d['i'] }}</td>
             <td>{{ $d['violation'] }}</td>
             <td>{{ $d['status'] }}</td>
-          @endif
-          <td>{{ $d['date_time'] }}</td>
-        </tr>
-      @empty
-        <tr>
-          <td colspan="6" style="text-align:center; padding:10px;">No incident records found.</td>
-        </tr>
-      @endforelse
-    </tbody>
-  </table>
+            <td>{{ $d['occurrence'] }}</td>
+            <td>{{ $d['penalty'] }}</td>
+            <td>{{ $d['date_time'] }}</td>
+          </tr>
+        @empty
+          <tr>
+            <td colspan="6" style="text-align:center; padding:10px;">No violation records found.</td>
+          </tr>
+        @endforelse
+      </tbody>
+    </table>
+  @endif
 </body>
 </html>

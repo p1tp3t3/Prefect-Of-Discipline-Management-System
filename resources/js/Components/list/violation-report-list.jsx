@@ -2,6 +2,7 @@ import { DataGrid } from "@mui/x-data-grid"
 import Box from "@mui/material/Box"
 import { getProfilePic, getYearLevel, readableDate, readableTime, toTitleCase } from "@/others/function"
 import ProfilePic from "../other/profile-pic"
+import { FolderOpen } from "lucide-react"
 
 const ViolationReportList = ({ list = [] }) => {
     const rows = list.map((e, i) => ({
@@ -117,7 +118,7 @@ const ViolationReportList = ({ list = [] }) => {
                 <div className="flex justify-center items-center w-full">
                     <div className="grid place-items-center text-gray-600">
                         <div className="text-[4em]">
-                            <i className="fa-solid fa-folder-open"></i>
+                            <FolderOpen size="1em" />
                         </div>
                         <div>
                             <b>No Violation Reports Found</b>
@@ -136,31 +137,34 @@ const ViolationReportList = ({ list = [] }) => {
                 borderRadius: 2,
                 boxShadow: 2,
                 p: 2,
+                overflowX: "auto",
             }}
         >
-            <DataGrid
-                rows={rows}
-                columns={columns}
-                pageSizeOptions={[5, 10, 20]}
-                initialState={{
-                    pagination: {
-                        paginationModel: { pageSize: 10, page: 0 },
-                    },
-                }}
-                pagination
-                disableRowSelectionOnClick
-                sx={{
-                    border: "none",
-                    "& .MuiDataGrid-columnHeaders": {
-                        backgroundColor: "#f9fafb",
-                        fontWeight: "bold",
-                    },
-                    "& .MuiDataGrid-cell": {
-                        alignItems: "center",
-                    },
-                }}
-                showToolbar
-            />
+            <Box sx={{ minWidth: "900px" }}>
+                <DataGrid
+                    rows={rows}
+                    columns={columns}
+                    pageSizeOptions={[5, 10, 20]}
+                    initialState={{
+                        pagination: {
+                            paginationModel: { pageSize: 10, page: 0 },
+                        },
+                    }}
+                    pagination
+                    disableRowSelectionOnClick
+                    sx={{
+                        border: "none",
+                        "& .MuiDataGrid-columnHeaders": {
+                            backgroundColor: "#f9fafb",
+                            fontWeight: "bold",
+                        },
+                        "& .MuiDataGrid-cell": {
+                            alignItems: "center",
+                        },
+                    }}
+                    showToolbar
+                />
+            </Box>
         </Box>
     )
 }

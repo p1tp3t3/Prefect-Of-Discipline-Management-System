@@ -1,15 +1,14 @@
 import SetAppointmentReasonModal from "@/Components/modal/submission-form/set-appointment-reason-modal";
-import Reload from "@/Components/reload/reload";
+import { useReload } from "@/context-provider/reload-provider";
 import NotifDisplayLayout from "@/Layouts/notif-display-layout";
-import { APIRequest } from "@/others/classes/api-req";
+import { AppointmentService } from "@/others/services/appointment-service";
 import { showOutputModal, showWarningModal } from "@/others/function";
 import { useState } from "react";
+import { CheckCircle2, XCircle } from "lucide-react";
 
 const AppointmentNotification = (props) => {
   const [reasonModalOpen, setReasonModalOpen] = useState(false);
-  const [reload, setReload] = useState(false);
-  const [reloadType, setReloadType] = useState("");
-  const [reloadLabel, setReloadLabel] = useState("");
+  const { loadRegister } = useReload();
   const [data, setData] = useState(props.notif);
   const [data2, setData2] = useState({
     user_id: props.user.id,
@@ -29,14 +28,6 @@ const AppointmentNotification = (props) => {
 
   // Prefect who sent the notification
   const isSender = props.user.id === data.receiver_id;
-
-  const transitionClass = reload ? "opacity-1 z-50" : "opacity-0 z-[-1]";
-
-  const loadRegister = (r, t, l) => {
-    setReload(r);
-    setReloadType(t);
-    setReloadLabel(l);
-  };
 
   // ----------------------------------------
   // FIXED TITLE LOGIC FOR BOTH SCHED & RESCHED
@@ -125,9 +116,7 @@ const AppointmentNotification = (props) => {
         () => {
           loadRegister(true, "text-wait", "Processing Request...");
 
-          const api = new APIRequest(
-            `/appointment/action`,
-            "post",
+          AppointmentService.respondWithSetter(
             {
               id: notifId,
               action: "accept",
@@ -154,8 +143,6 @@ const AppointmentNotification = (props) => {
               )
             }
           );
-
-          api.sendPostData();
         }
       );
       return;
@@ -167,14 +154,6 @@ const AppointmentNotification = (props) => {
 
   return (
     <>
-      {/* RELOAD OVERLAY */}
-      <Reload
-        transition={transitionClass}
-        type={reloadType}
-        label={reloadLabel}
-        onClose={setReload}
-      />
-
       {/* DECLINE MODAL */}
       <SetAppointmentReasonModal
         close={reasonModalOpen}
@@ -213,9 +192,7 @@ const AppointmentNotification = (props) => {
               : "Declining Rescheduled Appointment..."
           );
 
-          const api = new APIRequest(
-            `/appointment/action`,
-            "post",
+          AppointmentService.respondWithSetter(
             {
               id: props.notif.id,
               reason: data2.reason,
@@ -242,8 +219,6 @@ const AppointmentNotification = (props) => {
               )
             }
           );
-
-          api.sendPostData();
         }}
       />
 
@@ -303,9 +278,7 @@ const AppointmentNotification = (props) => {
                     : "bg-red-100 text-red-700 border border-red-300"
                   }`}
                 >
-                  <i 
-                    className={`fa-solid ${content.accept ? "fa-circle-check" : "fa-circle-xmark"} text-xl`}
-                  ></i>
+                  {content.accept ? <CheckCircle2 size={20} /> : <XCircle size={20} />}
 
                   <span className="font-semibold text-lg">
                     {content.type === "sched"

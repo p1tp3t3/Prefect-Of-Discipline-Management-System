@@ -25,6 +25,8 @@ class DatabaseSeeder extends Seeder
             ComplaintSeeder::class,
             ReferralSeeder::class,
             AbsenceSeeder::class,
+            AppointmentSeeder::class,
+            GatePassSeeder::class,
         ]);
         $this->command->info('Database seeded successfully.');
     }

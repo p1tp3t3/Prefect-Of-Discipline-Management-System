@@ -2,10 +2,13 @@ import AuthLayout from "@/Layouts/auth-layout";
 import { useState, useEffect } from "react";
 import Switch from "@/Components/button/switch-btn";
 import ActionBtn from "@/Components/button/action-btn";
-import Reload from "@/Components/reload/reload";
-import { APIRequest } from "@/others/classes/api-req";
+import { useReload } from "@/context-provider/reload-provider";
+import { SystemService } from "@/others/services/system-service";
 import { Broadcast } from "@/others/classes/broadcast-cofiguration";
 import { readableDate, readableTime, showOutputModal, showWarningModal } from "@/others/function";
+import TabSwitcher from "@/Components/other/tab-switcher";
+import { Table, TableHead, TableBody, TableRow, TableCell } from "@mui/material";
+import { Database, Folder, Archive } from "lucide-react";
 
 const formatBytes = (bytes) => {
     if (!bytes) return "0 B";
@@ -22,15 +25,7 @@ const SystemMaintenance = (props) => {
     const [maintenanceMode, setMaintenanceMode] = useState(!!props.maintenance_mode),
           [togglingMode, setTogglingMode] = useState(false);
 
-    const [reload, setReload] = useState(false),
-          [reloadType, setReloadType] = useState(""),
-          [reloadLabel, setReloadLabel] = useState("");
-
-    const loadRegister = (r, t = "", l = "") => {
-        setReload(r);
-        setReloadType(t);
-        setReloadLabel(l);
-    };
+    const { loadRegister } = useReload();
 
     useEffect(() => {
         new Broadcast(
@@ -46,29 +41,19 @@ const SystemMaintenance = (props) => {
         setTogglingMode(true);
 
         const next = !maintenanceMode;
-        const api = new APIRequest(
-            '/maintenance/mode/toggle',
-            'post',
-            { enabled: next },
+        SystemService.toggleMaintenanceMode(
+            next,
             (res) => {
                 setMaintenanceMode(!!res.maintenance_mode);
                 setTogglingMode(false);
             },
-            () => {},
             () => setTogglingMode(false)
         );
-        api.fetchData();
     };
 
     return (
         <>
-        <Reload
-            transition={reload ? "opacity-1 z-50" : "opacity-0 z-[-1]"}
-            type={reloadType}
-            label={reloadLabel}
-            onClose={(e) => setReload(e)}
-        />
-        <div className="grid gap-8 px-4 sm:px-6 lg:px-10">
+        <div className="grid gap-8">
             <div className="pt-6 sm:pt-10 grid w-full gap-3">
 
                 {/* Page Title */}
@@ -77,28 +62,14 @@ const SystemMaintenance = (props) => {
                 </h1>
 
                 {/* Tabs */}
-                <div className="flex flex-wrap border-b border-gray-200">
-                    <button
-                        className={`px-3 sm:px-4 py-2 ${
-                            activeTab === "maintenance_mode"
-                                ? "border-b-2 border-blue-500 text-blue-500"
-                                : "text-gray-600"
-                        }`}
-                        onClick={() => setActiveTab("maintenance_mode")}
-                    >
-                        Maintenance Mode
-                    </button>
-                    <button
-                        className={`px-3 sm:px-4 py-2 ${
-                            activeTab === "backup"
-                                ? "border-b-2 border-blue-500 text-blue-500"
-                                : "text-gray-600"
-                        }`}
-                        onClick={() => setActiveTab("backup")}
-                    >
-                        Backup
-                    </button>
-                </div>
+                <TabSwitcher
+                    tabs={[
+                        { key: "maintenance_mode", label: "Maintenance Mode" },
+                        { key: "backup", label: "Backup" },
+                    ]}
+                    value={activeTab}
+                    onChange={setActiveTab}
+                />
 
                 <div className="py-6 sm:py-10">
                     {activeTab === "maintenance_mode" && (
@@ -153,10 +124,9 @@ const BackupTab = ({ reload }) => {
     const [creating, setCreating] = useState(null);
 
     const fetchBackups = () => {
-        const api = new APIRequest("/maintenance/backups", "get", {}, (res) => {
+        SystemService.getBackups((res) => {
             setBackups(res.backups || []);
         });
-        api.fetchData();
     };
 
     useEffect(() => {
@@ -168,11 +138,8 @@ const BackupTab = ({ reload }) => {
         setCreating(type);
         reload(true, "text-wait", `Creating ${label} backup. This may take a while`);
 
-        const api = new APIRequest(
+        SystemService.createBackup(
             endpoint,
-            "post",
-            {},
-            () => {},
             () => {
                 reload(true, "success", `${label} Backup Created Successfully`);
                 setCreating(null);
@@ -183,7 +150,6 @@ const BackupTab = ({ reload }) => {
                 setCreating(null);
             }
         );
-        api.sendPostData();
     };
 
     const deleteBackup = (name) => {
@@ -192,18 +158,14 @@ const BackupTab = ({ reload }) => {
             "Delete Backup",
             "Cancel",
             () => {
-                const api = new APIRequest(
-                    `/maintenance/backups/${name}/delete`,
-                    "post",
-                    {},
-                    () => {},
+                SystemService.deleteBackup(
+                    name,
                     () => {
                         showOutputModal("Backup Deleted Successfully", "s");
                         fetchBackups();
                     },
                     () => showOutputModal("Failed To Delete Backup", "e")
                 );
-                api.sendPostData();
             }
         );
     };
@@ -237,7 +199,7 @@ const BackupTab = ({ reload }) => {
             {tab === "create" && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                     <BackupCard
-                        icon="fa-database"
+                        icon={Database}
                         title="Database"
                         description="Export a full SQL dump of the database."
                         buttonLabel="Backup Database"
@@ -246,7 +208,7 @@ const BackupTab = ({ reload }) => {
                         onClick={() => createBackup("database", "/maintenance/backups/database", "Database")}
                     />
                     <BackupCard
-                        icon="fa-folder"
+                        icon={Folder}
                         title="Storage"
                         description="Zip all uploaded files (profile pictures, evidence, documents)."
                         buttonLabel="Backup Storage"
@@ -255,7 +217,7 @@ const BackupTab = ({ reload }) => {
                         onClick={() => createBackup("storage", "/maintenance/backups/storage", "Storage")}
                     />
                     <BackupCard
-                        icon="fa-box-archive"
+                        icon={Archive}
                         title="Full System"
                         description="Database and storage combined into a single archive."
                         buttonLabel="Full System Backup"
@@ -269,27 +231,27 @@ const BackupTab = ({ reload }) => {
             {tab === "history" && (
                 <div className="bg-white border border-gray-200 rounded-md px-5 py-4">
                     <div className="overflow-x-auto">
-                        <table className="w-full text-[0.85em]">
-                            <thead>
-                                <tr className="text-left border-b border-gray-200 text-gray-600">
-                                    <th className="py-2 pr-3">Name</th>
-                                    <th className="py-2 pr-3">Type</th>
-                                    <th className="py-2 pr-3">Size</th>
-                                    <th className="py-2 pr-3">Created</th>
-                                    <th className="py-2 pr-3">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
+                        <Table sx={{ width: "100%", fontSize: "0.85em" }}>
+                            <TableHead>
+                                <TableRow sx={{ "& .MuiTableCell-root": { color: "#4b5563", fontWeight: 600 } }}>
+                                    <TableCell>Name</TableCell>
+                                    <TableCell>Type</TableCell>
+                                    <TableCell>Size</TableCell>
+                                    <TableCell>Created</TableCell>
+                                    <TableCell>Action</TableCell>
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
                                 {backups.length !== 0 ? (
                                     backups.map((b, i) => (
-                                        <tr key={i} className="border-b border-gray-100">
-                                            <td className="py-2 pr-3 break-all">{b.name}</td>
-                                            <td className="py-2 pr-3">{backupTypeLabel[b.type] ?? b.type}</td>
-                                            <td className="py-2 pr-3">{formatBytes(b.size)}</td>
-                                            <td className="py-2 pr-3">
+                                        <TableRow key={i}>
+                                            <TableCell sx={{ wordBreak: "break-all" }}>{b.name}</TableCell>
+                                            <TableCell>{backupTypeLabel[b.type] ?? b.type}</TableCell>
+                                            <TableCell>{formatBytes(b.size)}</TableCell>
+                                            <TableCell>
                                                 {readableDate(b.created_at)} ({readableTime(b.created_at)})
-                                            </td>
-                                            <td className="py-2 pr-3">
+                                            </TableCell>
+                                            <TableCell>
                                                 <div className="flex gap-2">
                                                     <a href={`/maintenance/backups/${b.name}/download`}>
                                                         <ActionBtn className="bg-green-600 hover:bg-green-700">
@@ -303,18 +265,18 @@ const BackupTab = ({ reload }) => {
                                                         Delete
                                                     </ActionBtn>
                                                 </div>
-                                            </td>
-                                        </tr>
+                                            </TableCell>
+                                        </TableRow>
                                     ))
                                 ) : (
-                                    <tr>
-                                        <td colSpan={5} className="py-6 text-center text-gray-500">
+                                    <TableRow>
+                                        <TableCell colSpan={5} align="center" sx={{ py: 3, color: "#6b7280" }}>
                                             No Backups Yet
-                                        </td>
-                                    </tr>
+                                        </TableCell>
+                                    </TableRow>
                                 )}
-                            </tbody>
-                        </table>
+                            </TableBody>
+                        </Table>
                     </div>
                 </div>
             )}
@@ -322,10 +284,10 @@ const BackupTab = ({ reload }) => {
     );
 };
 
-const BackupCard = ({ icon, title, description, buttonLabel, loading, disabled, onClick }) => (
+const BackupCard = ({ icon: Icon, title, description, buttonLabel, loading, disabled, onClick }) => (
     <div className="bg-white border border-gray-200 rounded-md p-5 grid gap-4">
         <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 grid place-items-center text-lg">
-            <i className={`fa-solid ${icon}`}></i>
+            <Icon size={18} />
         </div>
         <div>
             <div className="font-semibold text-gray-800">{title}</div>

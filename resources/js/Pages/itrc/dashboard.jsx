@@ -9,6 +9,7 @@ import { toTitleCase } from "@/others/function";
 import { Link } from "@inertiajs/react";
 import LatestActiveAccountList from "@/Components/list/latest-active-user-list";
 import { motion } from "framer-motion";
+import { Users, GraduationCap, FileText } from "lucide-react";
 
 const ITRCDashboard = (props) => {
   const bar = props.bargraph;
@@ -74,7 +75,7 @@ const ITRCDashboard = (props) => {
                 <QuantityCard
                   h="h-[9rem]"
                   num={props.account_total}
-                  icon="fa-users"
+                  icon={Users}
                   label="Total Registered Users"
                   color={{
                     bg: "bg-white hover:bg-black/5 transition-all",
@@ -85,7 +86,7 @@ const ITRCDashboard = (props) => {
                 <QuantityCard
                   h="h-[9rem]"
                   num={props.program}
-                  icon="fa-user-graduate"
+                  icon={GraduationCap}
                   label="Total College Programs"
                   color={{
                     bg: "bg-white hover:bg-black/5 transition-all",
@@ -96,7 +97,7 @@ const ITRCDashboard = (props) => {
                 <QuantityCard
                   h="h-[9rem]"
                   num={props.report}
-                  icon="fa-file"
+                  icon={FileText}
                   label="Total Action Logs"
                   color={{
                     bg: "bg-white hover:bg-black/5 transition-all",

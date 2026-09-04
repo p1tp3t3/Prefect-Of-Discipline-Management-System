@@ -6,7 +6,7 @@ import RadioButton from "@/Components/input/radio";
 import PicVidUpload from "@/Components/input/pic-vid-upload";
 import BetweenTextfield from "@/Components/input/between-input";
 import { useState } from "react";
-import { APIRequest } from "@/others/classes/api-req";
+import { AbsentFormService } from "@/others/services/absent-form-service";
 
 const RequestAbsentFormModal = (props) => {
   return (
@@ -85,17 +85,8 @@ const Body = ({ id, reload }) => {
             f.append(`evidence[${index}]`, file);
           });
 
-          const api = new APIRequest(
-            "/student/absent-form/create",
-            "post",
-            f,
-            () => {},
-            success,
-            error
-          );
-
           reload(true, "text-wait", "Your Absent Form is Processing");
-          api.sendPostData();
+          AbsentFormService.submit(f, success, error);
         }
       );
     }

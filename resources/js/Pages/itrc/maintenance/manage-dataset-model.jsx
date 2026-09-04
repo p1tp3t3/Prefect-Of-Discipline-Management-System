@@ -1,5 +1,6 @@
 import UploadFileBtn from "@/Components/button/upload-file-btn";
 import { useState } from "react";
+import { Table, TableHead, TableBody, TableRow, TableCell, TableContainer, Paper } from "@mui/material";
 
 const ManageDatasetModel = (props) => {
 
@@ -52,47 +53,49 @@ const ManageDatasetModel = (props) => {
                         </UploadFileBtn>
                     </div>
                 </div>
-                <table className="w-full bg-white rounded-lg shadow-md overflow-hidden">
-                    <thead className="bg-gray-200">
-                        <tr>
-                            <th className="px-4 py-2 text-left">#</th>
-                            <th className="px-4 py-2 text-left">Name</th>
-                            <th className="px-4 py-2 text-left">Size</th>
-                            <th className="px-4 py-2 text-left">Last Updated</th>
-                            <th className="px-4 py-2 text-left">Status</th>
-                            <th className="px-4 py-2 text-left">Accuracy</th>
-                            <th className="px-4 py-2 text-left">Precision</th>
-                            <th className="px-4 py-2 text-left">Recall</th>
-                            <th className="px-4 py-2 text-left">F1 Score</th>
-                            <th className="px-4 py-2 text-left">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
+                <TableContainer component={Paper} sx={{ width: "100%", borderRadius: "0.5rem", boxShadow: 2 }}>
+                <Table sx={{ width: "100%" }}>
+                    <TableHead>
+                        <TableRow sx={{ "& .MuiTableCell-root": { backgroundColor: "#e5e7eb" } }}>
+                            <TableCell>#</TableCell>
+                            <TableCell>Name</TableCell>
+                            <TableCell>Size</TableCell>
+                            <TableCell>Last Updated</TableCell>
+                            <TableCell>Status</TableCell>
+                            <TableCell>Accuracy</TableCell>
+                            <TableCell>Precision</TableCell>
+                            <TableCell>Recall</TableCell>
+                            <TableCell>F1 Score</TableCell>
+                            <TableCell>Actions</TableCell>
+                        </TableRow>
+                    </TableHead>
+                    <TableBody>
                         {datasets.map((dataset, i) => (
-                            <tr key={dataset.id} className="border-t text-[0.9em]">
-                                <td className="px-4 py-2">{i + 1}.</td>
-                                <td className="px-4 py-2">{dataset.name}</td>
-                                <td className="px-4 py-2">{dataset.size}</td>
-                                <td className="px-4 py-2">{dataset.lastUpdated}</td>
-                                <td className="px-4 py-2">
+                            <TableRow key={dataset.id} sx={{ fontSize: "0.9em" }}>
+                                <TableCell>{i + 1}.</TableCell>
+                                <TableCell>{dataset.name}</TableCell>
+                                <TableCell>{dataset.size}</TableCell>
+                                <TableCell>{dataset.lastUpdated}</TableCell>
+                                <TableCell>
                                     <span className={`px-2 py-1 rounded text-sm ${dataset.status === 'Ready' ? 'bg-green-100 text-green-800' : dataset.status === 'Processing' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}`}>
                                         {dataset.status}
                                     </span>
-                                </td>
-                                <td className="px-4 py-2">12%</td>
-                                <td className="px-4 py-2">12%</td>
-                                <td className="px-4 py-2">12%</td>
-                                <td className="px-4 py-2">12%</td>
-                                <td className="px-4 py-2">
+                                </TableCell>
+                                <TableCell>12%</TableCell>
+                                <TableCell>12%</TableCell>
+                                <TableCell>12%</TableCell>
+                                <TableCell>12%</TableCell>
+                                <TableCell>
                                     <button className="text-blue-500 hover:underline mr-2">Select</button>
                                     <button className="text-blue-500 hover:underline mr-2">View</button>
                                     <button className="text-green-500 hover:underline mr-2">Export</button>
                                     <button className="text-red-500 hover:underline">Delete</button>
-                                </td>
-                            </tr>
+                                </TableCell>
+                            </TableRow>
                         ))}
-                    </tbody>
-                </table>
+                    </TableBody>
+                </Table>
+                </TableContainer>
             </div>
             <div>
                 <h2 className="text-xl font-semibold mb-4">Model Training</h2>

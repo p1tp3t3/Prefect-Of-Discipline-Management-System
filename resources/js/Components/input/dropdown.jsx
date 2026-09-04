@@ -1,6 +1,7 @@
 import { toTitleCase } from "@/others/function"
 import { useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
+import { ChevronDown } from "lucide-react"
 
 const DropdownField = (props) => {
     const objConvert = () => {
@@ -119,8 +120,9 @@ const Search = ({ list, name, val, onChange, req, error, default: def }) => {
   {selectedLabel}
 </span>
 
-        <i
-          className={`fa-solid fa-chevron-down text-gray-600 transition-transform ${
+        <ChevronDown
+          size={14}
+          className={`text-gray-600 transition-transform ${
             open ? "rotate-180" : ""
           }`}
         />

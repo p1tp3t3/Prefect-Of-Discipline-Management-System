@@ -2,7 +2,8 @@ import UpModal from "../up-modal"
 import CheckBoxButton from "../../input/checkbox"
 import FormTextfield from "@/Components/input/form-input"
 import FormButton from "../../button/button"
-import { change, sendData, showOutputModal, showWarningModal } from "../../../others/function"
+import { change, showOutputModal, showWarningModal } from "../../../others/function"
+import { GatePassService } from "@/others/services/gatepass-service"
 import { useState } from "react"
 import RadioButton from "@/Components/input/radio"
 
@@ -37,12 +38,7 @@ const RequestGatePassModal = (props) => {
                 'Cancel',
                 () => {
                     props.reload(true, "text-wait", "Your Gate Pass is Processing")
-                    sendData(
-                        `/gatepass/create`, 
-                        data, 
-                        success, 
-                        error
-                    )
+                    GatePassService.request(data, success, error)
                 }
             )
         }else {

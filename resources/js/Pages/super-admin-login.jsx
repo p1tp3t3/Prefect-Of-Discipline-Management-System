@@ -1,20 +1,25 @@
 import LogInForm from "@/Components/log-in-form";
 import { Head } from "@inertiajs/react";
-import Reload from "@/Components/reload/reload";
 import "./style.css";
 import { useState } from "react";
 import axios from "axios";
 import { showOutputModal } from "@/others/function";
 import background from '@/images/bg-pilar2.jpg'
+import { ReloadProvider, useReload } from "@/context-provider/reload-provider";
 
+const SuperAdminLogin = (props) => (
+    <ReloadProvider>
+        <SuperAdminLoginInner {...props} />
+    </ReloadProvider>
+);
 
-const SuperAdminLogin = (props) => {
+const SuperAdminLoginInner = (props) => {
     const [data, setData] = useState({
         username: "",
         password: "",
     });
 
-    const [reload, setReload] = useState(false);
+    const { loadRegister } = useReload();
     const [validationErr, setValidationError] = useState({});
     const [submitting, setSubmitting] = useState(false);
 
@@ -42,7 +47,7 @@ const SuperAdminLogin = (props) => {
         if (submitting) return;
 
         setSubmitting(true);
-        setReload(true);
+        loadRegister(true, "logo");
 
         axios
             .post(`/super-admin/login/${props.password}`, data)
@@ -53,12 +58,12 @@ const SuperAdminLogin = (props) => {
                         username: '',
                         password: ''
                     })
-                    setReload(false)
+                    loadRegister(false)
                     window.location.reload();
                 });
             })
             .catch((err) => {
-                setReload(false);
+                loadRegister(false);
                 setSubmitting(false);
 
                 const backend = err.response.data;
@@ -73,11 +78,9 @@ const SuperAdminLogin = (props) => {
         <>
             <Head title="Super Admin Access - Maintenance" />
 
-            <Reload transition={reload ? "opacity-1 z-20" : "opacity-0"} type="logo" />
-
             <div className="w-full h-[100vh]">
                 <div className="flex w-full h-full">
-                    <div className="w-full h-full relative">
+                    <div className="hidden md:block w-full h-full relative">
                         <div className="absolute w-full h-full bg-[#000000a6]"></div>
                         <p className="text-white text-[3em] font-bold absolute frm px-10 mt-10">
                             System Under Maintenance — Super Admin Access Only

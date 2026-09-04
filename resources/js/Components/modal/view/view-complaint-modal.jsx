@@ -2,9 +2,10 @@ import UpModal from "../up-modal"
 import { useState, useEffect } from "react"
 import { getData, getProfilePic, readableDate, readableTime, toTitleCase } from "../../../others/function"
 import SelectedUser from "../../other/selected-user"
-import { APIRequest } from "@/others/classes/api-req"
+import { ComplaintService } from "@/others/services/complaint-service"
 import CircleReload from "@/Components/reload/circle-reload"
 import { Link } from "@inertiajs/react"
+import { AlertCircle } from "lucide-react"
 
 const ViewComplaintModal = (props) => {
     const [data, setData] = useState(null),
@@ -21,9 +22,7 @@ const ViewComplaintModal = (props) => {
     }, [props.close])
 
     const getComplaintInfo = () => {
-        const id = props.complainant
-        const api = new APIRequest(`/complainant/get/${id}`, 'post', {}, setData)
-        api.fetchData()
+        ComplaintService.getComplaintInfo(props.complainant, setData)
     }
 
     return (
@@ -68,6 +67,10 @@ const Body = ({ data, usr }) => {
             </div>
             <div className="grid gap-6">
                 <div className="grid gap-3">
+                    <div>
+                        <h2 className="text-lg font-semibold">Reference No.</h2>
+                        <p className="text-sm">{data.complaint_number}</p>
+                    </div>
                     <div>
                         <h2 className="text-lg font-semibold">Status</h2>
                         <span className={`inline-block px-3 py-1 text-white text-sm rounded-full ${status(data.complaint_status)}`}>
@@ -164,7 +167,7 @@ const Body = ({ data, usr }) => {
                                 </div>
                             ) : (
                                 <div className="flex flex-col items-center justify-center py-12 text-gray-500">
-                                    <i className="fa-solid fa-circle-exclamation text-4xl mb-2"></i>
+                                    <AlertCircle size="2.25rem" className="mb-2" />
                                     <p className="text-sm font-medium">No Context Analyzed</p>
                                 </div>
                             )}
@@ -188,7 +191,7 @@ const Body = ({ data, usr }) => {
                         })}
                       </div>
                     : <div className="text-center py-8 text-gray-500">
-                        <i className="fa-solid fa-circle-exclamation text-4xl mb-2"></i>
+                        <AlertCircle size="2.25rem" className="mb-2" />
                         <div>No Evidences Included</div>
                       </div>}
                 </div>

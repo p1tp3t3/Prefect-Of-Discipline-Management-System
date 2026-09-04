@@ -5,8 +5,9 @@ import AuthContext from "@/context-provider/auth-provider"
 
 import { getProfilePic, readableDate, readableTime, toTitleCase } from "../../others/function"
 import ProfilePic from "../other/profile-pic"
-import CircleReload from "../reload/circle-reload"
+import ListSkeleton from "../reload/list-skeleton"
 import ActionBtn from "../button/action-btn"
+import { Folder } from "lucide-react"
 
 const ReferralList = ({ style, list = null, type, events, viewReferral }) => {
     const { usr } = useContext(AuthContext)
@@ -20,7 +21,8 @@ const ReferralList = ({ style, list = null, type, events, viewReferral }) => {
         return list.map((e, i) => ({
             id: e.id,
             index: i + 1,
-            referrer: e.user,          // used when type === 'prefect'
+            referral_number: e.referral_number,
+            referrer: e.user,          // used when type === 'sub_admin'
             created_at: e.created_at,
             confirmed_at: e.confirmed_at,
             raw: e,                    // keep entire object if you need later
@@ -35,9 +37,14 @@ const ReferralList = ({ style, list = null, type, events, viewReferral }) => {
                 width: 70,
                 sortable: false,
             },
+            {
+                field: "referral_number",
+                headerName: "Reference No.",
+                width: 130,
+            },
         ]
 
-        if (type === "prefect") {
+        if (type === "sub_admin") {
             cols.push({
                 field: "referrerCol",
                 headerName: "Referrer",
@@ -143,7 +150,7 @@ const ReferralList = ({ style, list = null, type, events, viewReferral }) => {
         return (
             <div className={style ? "w-full px-5 py-10 bg-white rounded-md shadow-black/20 shadow-sm" : ""}>
                 <div className="flex justify-center items-center w-full">
-                    <CircleReload size={3} />
+                    <ListSkeleton rows={4} />
                 </div>
             </div>
         )
@@ -157,7 +164,7 @@ const ReferralList = ({ style, list = null, type, events, viewReferral }) => {
                 <div className="flex justify-center items-center w-full">
                     <div className="grid place-items-center text-gray-600">
                         <div className="text-[4em]">
-                            <i className="fa-solid fa-folder"></i>
+                            <Folder size="1em" />
                         </div>
                         <div>
                             <b>No Referrals Found</b>
@@ -181,19 +188,22 @@ const ReferralList = ({ style, list = null, type, events, viewReferral }) => {
                     borderRadius: 2,
                     boxShadow: style ? 0 : 2,
                     p: style ? 0 : 2,
+                    overflowX: "auto",
                 }}
             >
-                <DataGrid
-                    rows={rows}
-                    columns={columns}
-                    pageSizeOptions={[5, 10, 20]}
-                    initialState={{
-                        pagination: { paginationModel: { pageSize: 10, page: 0 } },
-                    }}
-                    disableRowSelectionOnClick
-                    pagination
-                    showToolbar
-                />
+                <Box sx={{ minWidth: "1200px" }}>
+                    <DataGrid
+                        rows={rows}
+                        columns={columns}
+                        pageSizeOptions={[5, 10, 20]}
+                        initialState={{
+                            pagination: { paginationModel: { pageSize: 10, page: 0 } },
+                        }}
+                        disableRowSelectionOnClick
+                        pagination
+                        showToolbar
+                    />
+                </Box>
             </Box>
         </div>
     )

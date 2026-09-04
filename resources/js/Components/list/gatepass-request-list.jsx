@@ -6,7 +6,8 @@ import AuthContext from "@/context-provider/auth-provider"
 import { getProfilePic, readableDate, readableTime, toTitleCase } from "../../others/function"
 import ProfilePic from "../other/profile-pic"
 import ActionBtn from "../button/action-btn"
-import CircleReload from "../reload/circle-reload"
+import ListSkeleton from "../reload/list-skeleton"
+import { FileText } from "lucide-react"
 
 const GatePassRequestList = (props) => {
     const { usr } = useContext(AuthContext)
@@ -107,7 +108,7 @@ const GatePassRequestList = (props) => {
     if (props.list === null) {
         return (
             <div className="w-full px-5 py-10 bg-white rounded-md shadow-black/20 shadow-sm flex justify-center">
-                <CircleReload size={3} />
+                <ListSkeleton rows={4} />
             </div>
         )
     }
@@ -119,7 +120,7 @@ const GatePassRequestList = (props) => {
                 <div className="flex justify-center items-center w-full">
                     <div className="grid place-items-center text-gray-600">
                         <div className="text-[4em]">
-                            <i className="fa-solid fa-file"></i>
+                            <FileText size="1em" />
                         </div>
                         <div>
                             <b>No Gate Pass Request Yet</b>
@@ -138,19 +139,22 @@ const GatePassRequestList = (props) => {
                 borderRadius: 2,
                 boxShadow: 2,
                 p: 2,
+                overflowX: "auto",
             }}
         >
-            <DataGrid
-                rows={rows}
-                columns={columns}
-                pageSizeOptions={[5, 10, 20]}
-                initialState={{
-                    pagination: { paginationModel: { pageSize: 10, page: 0 } },
-                }}
-                pagination
-                disableRowSelectionOnClick
-                showToolbar
-            />
+            <Box sx={{ minWidth: "1000px" }}>
+                <DataGrid
+                    rows={rows}
+                    columns={columns}
+                    pageSizeOptions={[5, 10, 20]}
+                    initialState={{
+                        pagination: { paginationModel: { pageSize: 10, page: 0 } },
+                    }}
+                    pagination
+                    disableRowSelectionOnClick
+                    showToolbar
+                />
+            </Box>
         </Box>
     )
 }

@@ -1,23 +1,28 @@
 import AuthLayout from "@/Layouts/auth-layout";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import FamilyList from "@/Components/list/family-list";
 import EditFamilyModal from "@/Components/modal/submission-form/edit-family-modal";
 import Btn from "@/Components/button/normal-btn";
-import { APIRequest } from "@/others/classes/api-req";
-import Reload from "@/Components/reload/reload";
+import { useReload } from "@/context-provider/reload-provider";
 import SearchUserBar from "@/Components/input/search-user-bar";
 
 const Families = (props) => {
     const [openFamilyModal, setOpenFamilyModal] = useState(false);
     const [selectedFamily, setSelectedFamily] = useState(null);
 
-    const [reload, setReload] = useState(false);
-    const [reloadType, setReloadType] = useState("");
-    const [reloadLabel, setReloadLabel] = useState("");
     const [clickedOk, setClickOk] = useState(false);
 
     const [search, setSearch] = useState('');
     const [isSearchFocus, focusSearch] = useState(false);
+
+    const { loadRegister, setReload, setOnClose } = useReload();
+
+    useEffect(() => {
+        setOnClose(() => (e) => {
+            setReload(e);
+            if (clickedOk) window.location.reload();
+        });
+    }, [clickedOk]);
 
     const openEditModal = (family) => {
         setSelectedFamily(family);
@@ -28,29 +33,8 @@ const Families = (props) => {
         setSearch(e.target.value);
     };
 
-    const loadRegister = (r, t, l) => {
-        setReload(r);
-        setReloadType(t);
-        setReloadLabel(l);
-    };
-
-    const isReload = () => {
-        return reload ? "opacity-1 z-[100]" : "opacity-0 z-[-1]";
-    };
-
     return (
         <>
-            {/* LOADING / SUCCESS / ERROR SCREEN */}
-            <Reload
-                transition={isReload()}
-                type={reloadType}
-                label={reloadLabel}
-                onClose={(e) => {
-                    setReload(e);
-                    if (clickedOk) window.location.reload();
-                }}
-            />
-
             {/* FAMILY EDIT MODAL */}
             <EditFamilyModal
                 close={openFamilyModal}

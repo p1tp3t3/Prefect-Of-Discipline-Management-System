@@ -9,6 +9,7 @@ import NormalNotif from "../card/notif/normal-notif"
 import ReferralNotif from "../card/notif/referral-notif"
 import { toTitleCase } from "@/others/function"
 import { motion } from "framer-motion"
+import { BellOff, Trash2 } from "lucide-react"
 
 const NotificationList = ({ 
     list = null, 
@@ -86,7 +87,7 @@ const NotificationList = ({
                         transition={{ duration: 0.4, ease: "easeOut" }}
                     >
                         <div className="mb-3 text-gray-400">
-                            <i className="fa-regular fa-bell-slash text-5xl"></i>
+                            <BellOff size={48} />
                         </div>
 
                         <h1 className="text-[1.2em] text-gray-500 font-semibold">
@@ -142,7 +143,7 @@ const Notif = ({ obj = null, enableDel, select, deleteNotif }) => {
                       deleteNotif(obj.id)
                   }}
                 >
-                 <i className="fa-solid fa-trash"></i>
+                 <Trash2 size={14} />
               </ActionBtn>
     const checkBox = <input type="checkbox" name="selected-row" className="absolute top-1/2 -translate-y-1/2 right-2" onClick={(e) => e.stopPropagation()} value={obj.id} />
     switch(obj.notif_type) {

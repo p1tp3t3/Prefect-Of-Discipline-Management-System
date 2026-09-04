@@ -16,11 +16,12 @@ import {
   showWarningModal,
   toTitleCase,
 } from "@/others/function";
-import { APIRequest } from "@/others/classes/api-req";
+import { RegisterService } from "@/others/services/register-service";
 import UploadFileBtn from "@/Components/button/upload-file-btn";
 import Switch from "@/Components/button/switch-btn";
 import { Validator } from "@/others/classes/validator";
-import Btn from "@/Components/button/normal-btn";
+import UploadGuidelines from "@/Components/other/upload-guidelines";
+import TabSwitcher from "@/Components/other/tab-switcher";
 
 const RegistrationForm = ({
   baseData,
@@ -34,16 +35,17 @@ const RegistrationForm = ({
   setValidationError,
   handleToggle,
   activate,
-  openGuidelines,
   setUserType,
+  uploadingCSV,
 }) => {
   const [commonPasswordList, setCommonPasswordList] = useState(null),
-    [errors, setErrors] = useState(false);
+    [errors, setErrors] = useState(false),
+    [activeTab, setActiveTab] = useState('manual');
 
   const newField = () => {
     switch (baseData.user_type) {
       case "student":
-        return { program: "", year_level: "", school_year: "", semester: "" };
+        return { program: "", year_level: "", school_year: "", semester: "", enrolled_at: "" };
       case "faculty":
         return { program: "" };
       case "program_head":
@@ -62,7 +64,7 @@ const RegistrationForm = ({
     [existUsername, setExistUsername] = useState(false),
     [existUserId, setExistUserId] = useState(false),
     [existEmail, setExistEmail] = useState(false),
-    [alreadyRedGuideline, setAlreadyRedGuideline] = useState(false);
+    [agreedGuidelines, setAgreedGuidelines] = useState(false);
 
   useEffect(() => {
     fetch("/storage/list/common-password.txt")
@@ -93,8 +95,11 @@ const RegistrationForm = ({
     }));
 
     setUserType(data.user_type);
-    setAlreadyRedGuideline(false);
+    setAgreedGuidelines(false);
+    setActiveTab('manual');
   }, [data.user_type]);
+
+  const supportsBulkUpload = data.user_type && !["itrc", "prefect", "program_head", "faculty", "parent"].includes(data.user_type);
 
   const handleChange = (e) => change(e, setData);
 
@@ -137,8 +142,7 @@ const RegistrationForm = ({
           "text-wait",
           `${toTitleCase(data.user_type)} is Generating. Please Wait`
         );
-        const api = new APIRequest("/super-admin/register", "post", d, () => {}, success, error);
-        api.sendPostData();
+        RegisterService.registerUser(d, success, error);
       }
     );
   };
@@ -178,7 +182,7 @@ const RegistrationForm = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="w-full grid gap-6 sm:gap-8">
+    <div className="w-full grid gap-6 sm:gap-8">
       {/* === USER TYPE SELECTION === */}
       <DropdownField
         default={{ val: "", label: "Select User Role" }}
@@ -189,62 +193,65 @@ const RegistrationForm = ({
         error={validationErr.user_type}
       />
 
-      {/* === CSV UPLOAD SECTION === */}
-      {data.user_type &&
-        !["itrc", "prefect", "program_head", "parent"].includes(data.user_type) && (
-          <>
-            <div className="grid gap-3">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                <Switch
-                  checked={activate}
-                  onChange={handleToggle}
-                  effect={["bg-red-600", "bg-green-600"]}
-                />
-                <div
-                  className={`${activate ? "text-green-500" : "text-red-500"}`}
-                >
-                  <b>{activate ? "Activate" : "Deactivate"}</b>
-                </div>
-              </div>
+      {/* === TABS === */}
+      <TabSwitcher
+        tabs={[
+          { key: 'manual', label: 'Manual Registration' },
+          ...(supportsBulkUpload ? [{ key: 'bulk', label: 'Bulk Upload' }] : []),
+        ]}
+        value={activeTab}
+        onChange={setActiveTab}
+      />
 
-              <div className="grid gap-3">
-                <Btn
-                  onclick={() => {
-                    openGuidelines(true);
-                    setAlreadyRedGuideline(true);
-                  }}
-                >
-                  <i className="fa-solid fa-circle-info"></i> Read Guidelines
-                </Btn>
-
-                {alreadyRedGuideline && (
-                  <UploadFileBtn
-                    name="csv-upload"
-                    accept=".csv"
-                    change={(e) => handleFileChange(e, data.user_type)}
-                  >
-                    <i className="fa-solid fa-upload"></i> Upload{" "}
-                    {toTitleCase(data.user_type)} List CSV File
-                  </UploadFileBtn>
-                )}
-              </div>
-
-              {validationErr.file && (
-                <div className="text-[#d12323] text-sm font-bold">
-                  {validationErr.file}
-                </div>
-              )}
+      {/* === BULK UPLOAD TAB === */}
+      {activeTab === 'bulk' && supportsBulkUpload && (
+        <div className="grid gap-5">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <Switch
+              checked={activate}
+              onChange={handleToggle}
+              effect={["bg-red-600", "bg-green-600"]}
+            />
+            <div className={`${activate ? "text-green-500" : "text-red-500"}`}>
+              <b>{activate ? "Activate" : "Deactivate"}</b>
             </div>
+          </div>
 
-            {/* Divider */}
-            <div className="flex items-center gap-3">
-              <div className="border-b border-black/20 w-full"></div>
-              <span className="text-[1em] text-gray-600">Or</span>
-              <div className="border-b border-black/20 w-full"></div>
+          <UploadGuidelines type={data.user_type} program={selectionVal[2]} />
+
+          <label className="flex items-start gap-2 text-sm text-gray-700 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={agreedGuidelines}
+              onChange={(e) => setAgreedGuidelines(e.target.checked)}
+              className="mt-1"
+            />
+            I have read and understood the guidelines above.
+          </label>
+
+          {agreedGuidelines && (
+            <UploadFileBtn
+              name="csv-upload"
+              accept=".csv"
+              change={(e) => handleFileChange(e, data.user_type)}
+              loading={uploadingCSV}
+            >
+              <i className="fa-solid fa-upload"></i> Upload{" "}
+              {toTitleCase(data.user_type)} List CSV File
+            </UploadFileBtn>
+          )}
+
+          {validationErr.file && (
+            <div className="text-[#d12323] text-sm font-bold whitespace-pre-line">
+              {validationErr.file}
             </div>
-          </>
-        )}
+          )}
+        </div>
+      )}
 
+      {/* === MANUAL REGISTRATION TAB === */}
+      {activeTab === 'manual' && (
+      <form onSubmit={handleSubmit} className="w-full grid gap-6 sm:gap-8">
       {/* === BASIC INFO === */}
       <div className="flex flex-col sm:flex-row gap-3">
         <FormTextfield
@@ -270,6 +277,14 @@ const RegistrationForm = ({
           change={handleChange}
           error={validationErr.last_name}
           errorAsterisk={validationErr.last_nameAsterisk}
+        />
+        <FormTextfield
+          label="Suffix (Optional)"
+          name="suffix"
+          val={data.suffix}
+          change={handleChange}
+          error={validationErr.suffix}
+          errorAsterisk={validationErr.suffixAsterisk}
         />
       </div>
 
@@ -369,7 +384,9 @@ const RegistrationForm = ({
         type="submit"
         label={`Register ${toTitleCase(data.user_type)}`}
       />
-    </form>
+      </form>
+      )}
+    </div>
   );
 };
 

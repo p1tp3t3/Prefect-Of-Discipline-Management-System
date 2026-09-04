@@ -8,7 +8,6 @@ use App\Models\ActionLog;
 use App\Models\Complaint;
 use App\Models\ComplaintSubject;
 use App\Models\ComplaintSubjectViolation;
-use App\Models\Program;
 use App\Models\User;
 use App\Models\Violation;
 use App\Models\ViolationPenalty;
@@ -23,50 +22,52 @@ use Inertia\Inertia;
 
 class ViolationController extends Controller
 {
-    public function violationIndex() {
-        return Inertia::render('prefect/violation', [
-            'user' => auth()->user(),
-            'program' => Program::all(['id', 'name', 'color_code']),
-            'student_violation_list' => ComplaintSubject::with([
-                                            'complaint',
-                                            'offenses.violation',
-                                            'user.profile',
-                                            'user.program',
-                                            'user.enrollments',
-                                            'user.teachingStaff.program'
-                                        ])
-                                        ->whereHas('complaint', function ($q) {
-                                            $q->where('complaint_status', 'resolved');
-                                        })
-                                        ->get()
-                                        ->groupBy(fn ($d) => $d->user->id) // ✅ GROUP BY STUDENT
-                                        ->map(function ($group) {
-                                            // flatten all offenses for this student
-                                            $allOffenses = $group->flatMap(fn($item) => $item->offenses);
-                                            $majorCount = $allOffenses
-                                                        ->filter(fn ($offense) =>
-                                                            optional($offense->violation)->offense_status === 1
-                                                        )
-                                                        ->count();
-                                            $minorCount = $allOffenses
-                                                        ->filter(fn ($offense) =>
-                                                            optional($offense->violation)->offense_status === 0
-                                                        )
-                                                        ->count();
+    /**
+     * The reverse of studentViolationIndex() — given a violation type,
+     * every student who has committed it (via a resolved complaint) plus
+     * how many times each of them has, for the "View" action on the
+     * Manage Violations list.
+     */
+    public function violationStudentsIndex($id) {
+        $violation = Violation::with(['penalties.penalty'])->findOrFail($id);
 
-                                            return [
-                                                'student_id' => $group->first()->user->id,
-                                                'user' => $group->first()->user,
-                                                'violation_count' => $allOffenses->count(),
-                                                'major_count' => $majorCount,
-                                                'minor_count' => $minorCount,
-                                                'penalty_count' => $group->count(), // or custom logic
-                                            ];
-                                        })
-                                        ->filter(fn ($item) => $item['violation_count'] > 0) 
-                                        ->values()
-                                    ]);
+        $students = ComplaintSubjectViolation::with(['user.profile', 'user.program', 'user.enrollments', 'user.teachingStaff.program'])
+            ->where('violation_id', $id)
+            ->whereHas('complaint', function ($q) {
+                $q->where('complaint_status', 'resolved');
+            })
+            ->get()
+            ->groupBy('student_id')
+            ->map(function ($group) {
+                $first = $group->first();
+
+                return [
+                    'student_id' => $first->student_id,
+                    'user' => $first->user,
+                    'violation_count' => $group->count(),
+                ];
+            })
+            ->values();
+
+        // How many students currently sit at each occurrence count (1st,
+        // 2nd, 3rd... offense of this specific violation).
+        $occurrenceBreakdown = $students
+            ->groupBy('violation_count')
+            ->map(fn ($group, $occurrence) => [
+                'occurrence' => (int) $occurrence,
+                'student_count' => $group->count(),
+            ])
+            ->sortBy('occurrence')
+            ->values();
+
+        return Inertia::render('itrc/maintenance/violation-students', [
+            'user' => auth()->user(),
+            'violation' => $violation,
+            'students' => $students,
+            'occurrence_breakdown' => $occurrenceBreakdown,
+        ]);
     }
+
     public function studentViolationIndex($id) {
         $studentViolations = ComplaintSubjectViolation::with(['violation', 'complaint'])->whereHas('complaint', function($d) {
             $d->latest('offense_issued_at');
@@ -351,7 +352,7 @@ return response()->json($incidents);
             ->get();
 
         if ($records->isEmpty()) {
-            return response()->json([]);
+            return [];
         }
 
         // Count occurrences by violation_id

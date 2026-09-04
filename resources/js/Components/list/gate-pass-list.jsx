@@ -98,26 +98,29 @@ const GatePassList = (props) => {
                 backgroundColor: '#fff',
                 borderRadius: 2,
                 boxShadow: 2,
-                p: 2
+                p: 2,
+                overflowX: 'auto',
             }}
         >
-            <DataGrid
-                rows={rows}
-                columns={columns}
-                pageSizeOptions={[5, 10, 20]}
-                initialState={{
-                    pagination: { paginationModel: { pageSize: 5, page: 0 } }
-                }}
-                pagination
-                disableRowSelectionOnClick
-                sx={{
-                    border: 'none',
-                    '& .MuiDataGrid-columnHeaders': {
-                        backgroundColor: '#f9fafb',
-                        fontWeight: 'bold'
-                    }
-                }}
-            />
+            <Box sx={{ minWidth: '900px' }}>
+                <DataGrid
+                    rows={rows}
+                    columns={columns}
+                    pageSizeOptions={[5, 10, 20]}
+                    initialState={{
+                        pagination: { paginationModel: { pageSize: 5, page: 0 } }
+                    }}
+                    pagination
+                    disableRowSelectionOnClick
+                    sx={{
+                        border: 'none',
+                        '& .MuiDataGrid-columnHeaders': {
+                            backgroundColor: '#f9fafb',
+                            fontWeight: 'bold'
+                        }
+                    }}
+                />
+            </Box>
         </Box>
     )
 }

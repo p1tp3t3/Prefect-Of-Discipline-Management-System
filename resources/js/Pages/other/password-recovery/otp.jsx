@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import shield from "../../../images/shield.png";
-import { APIRequest } from "@/others/classes/api-req";
+import { PasswordRecoveryService } from "@/others/services/password-recovery-service";
 
 const OTP = (props) => {
 
@@ -63,12 +63,7 @@ const OTP = (props) => {
     /** FIXED — Only resend if timer expired */
     const resendOtp = () => {
         if (time === 0) {
-            const api = new APIRequest(
-                "/forgot-password/otp",
-                "post",
-                { pin: props.generatedPin, type: "email", username: props.data.username }
-            );
-            api.sendPostData();
+            PasswordRecoveryService.resendOtp(props.generatedPin, "email", props.data.username);
             startTimer();
         }
     };

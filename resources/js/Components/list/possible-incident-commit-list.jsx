@@ -1,5 +1,6 @@
 import { toTitleCase } from "@/others/function";
-import CircleReload from "../reload/circle-reload";
+import ListSkeleton from "../reload/list-skeleton";
+import { TriangleAlert, Skull, User, AlertCircle, CheckCircle2 } from "lucide-react";
 
 const PossibleIncidentList = ({ list = null }) => {
     return  (
@@ -13,13 +14,13 @@ const PossibleIncidentList = ({ list = null }) => {
                 :
                 <div className="w-full h-[20rem] grid place-items-center">
                     <div className="text-center text-gray-500 py-10">
-                        <i className="fa-solid fa-triangle-exclamation text-[2em]"></i>
+                        <TriangleAlert size="2em" />
                         <h1 className="text-[1.2em]">No Possible Incident Found</h1>
                     </div>
                 </div>
                 :
                 <div className="w-full grid place-items-center">
-                    <CircleReload size={4} />
+                    <ListSkeleton rows={4} />
                 </div>
                 )}
             </div>
@@ -34,7 +35,7 @@ const Row = ({ data }) => {
         <div className={`${status} w-full bg-gray-50/5 border-l-4 border-gray-500/20`}>
             <div className="px-[1.5rem] py-[0.5rem] flex gap-6 border-b border-t border-r items-center">
                 <div className={`text-[1.3em] w-[3rem] h-[3rem] text-gray-300 bg-black/20 flex-shrink-0 rounded-full grid place-items-center`}>
-                    <i className="fa-solid fa-triangle-exclamation"></i>
+                    <TriangleAlert />
                 </div>
                 <div className="w-full flex flex-col gap-1">
                     <div>
@@ -79,11 +80,11 @@ const StatusBar = ({ data, i }) => {
             if (r >= 40) return 'Moderate Risk';
             return 'Low Risk';
         } if (t === 'icon') {
-            if (r >= 85) return 'fa-skull';
-            if (r >= 70) return 'fa-user';
-            if (r >= 55) return 'fa-triangle-exclamation';
-            if (r >= 40) return 'fa-circle-exclamation';
-            return 'fa-circle-check';
+            if (r >= 85) return Skull;
+            if (r >= 70) return User;
+            if (r >= 55) return TriangleAlert;
+            if (r >= 40) return AlertCircle;
+            return CheckCircle2;
         }
     }
 
@@ -99,7 +100,7 @@ const StatusBar = ({ data, i }) => {
                 </div>
                 <div className="flex gap-4 items-center">
                     <div className={`text-[1em] w-[2rem] h-[2rem] text-gray-300 bg-black/20 flex-shrink-0 rounded-full grid place-items-center`}>
-                        <i className={`fa-solid ${riskStatus('icon')}`}></i>
+                        {(() => { const RiskIcon = riskStatus('icon'); return <RiskIcon size="1em" />; })()}
                     </div>
                     <div className="w-full flex flex-col gap-1">
                         <div>

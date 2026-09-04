@@ -1,4 +1,4 @@
-import { APIRequest } from "../classes/api-req";
+import { ProgramService } from "../services/program-service";
 
 export const userType = [
     { val: "super_admin", label: 'System Admin' },
@@ -25,6 +25,5 @@ export const transactionType = [
     { val: "gatepass", label: "Allow to Gate Pass" },
 ]
 export const program = (setter) => {
-    const api = new APIRequest('/api/student/program', 'get', {}, setter)
-    api.fetchData()
+    ProgramService.getStudentPrograms(setter)
 }

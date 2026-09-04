@@ -5,6 +5,7 @@ import '../style.css'
 import PendingRequestList from "@/Components/list/pending-request-list";
 import AppointmentScheduleList from "@/Components/list/upcoming-sched-list";
 import { Link } from "@inertiajs/react";
+import { Users, FileText } from "lucide-react";
 
 const ParentDashboard = (props) => {
     const actDataset = [
@@ -28,7 +29,7 @@ const ParentDashboard = (props) => {
                                     <QuantityCard 
                                         h='h-[9rem]' 
                                         num={props.children}
-                                        icon='fa-users'
+                                        icon={Users}
                                         textColor='text-green-700'
                                         label='Total Children'
                                         color={{bg: 'bg-white hover:bg-black/5 transition-all'}}
@@ -40,7 +41,7 @@ const ParentDashboard = (props) => {
                                     <QuantityCard
                                         h="h-[9rem]"
                                         num={props.complaint}
-                                        icon="fa-file"
+                                        icon={FileText}
                                         textColor="text-green-700"
                                         label="Total Complaints"
                                         color={{

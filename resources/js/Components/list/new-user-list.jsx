@@ -1,7 +1,8 @@
 import { Link } from "@inertiajs/react"
 import ProfilePic from "../other/profile-pic"
 import { getProfilePic, getYearLevel, readableDate, readableTime, showUserType } from "@/others/function"
-import CircleReload from "../reload/circle-reload"
+import ListSkeleton from "../reload/list-skeleton"
+import { AlertCircle } from "lucide-react"
 
 const NewUserList = ({ list = null, showTitle = true }) => {
     return (
@@ -22,7 +23,7 @@ const NewUserList = ({ list = null, showTitle = true }) => {
                     <div className="text-[1em] text-gray-500 w-full grid place-items-center h-full">
                         <div className="grid place-items-center">
                             <div className="text-[4em]">
-                                <i className="fa-solid fa-circle-exclamation"></i>
+                                <AlertCircle size="1em" />
                             </div>
                             <div>No New Users Yet</div>
                         </div>
@@ -30,7 +31,7 @@ const NewUserList = ({ list = null, showTitle = true }) => {
                     :
                     <div className="text-[1em] text-gray-500 w-full grid place-items-center h-full">
                         <div className="grid place-items-center">
-                            <CircleReload size={5} />
+                            <ListSkeleton rows={4} />
                         </div>
                     </div>}
                 </div>

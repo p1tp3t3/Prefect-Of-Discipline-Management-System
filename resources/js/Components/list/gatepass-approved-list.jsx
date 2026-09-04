@@ -1,6 +1,7 @@
 import { getProfilePic, readableDate, readableTime, toTitleCase } from "@/others/function";
 import ProfilePic from "../other/profile-pic";
-import CircleReload from "../reload/circle-reload";
+import ListSkeleton from "../reload/list-skeleton";
+import { AlertCircle } from "lucide-react";
 
 const GatePassApprovedList = ({ list = null }) => {
     return (
@@ -14,7 +15,7 @@ const GatePassApprovedList = ({ list = null }) => {
                         <div className="text-gray-500 w-full grid place-items-center py-10">
                             <div className="grid place-items-center text-center">
                                 <div className="text-5xl mb-2">
-                                    <i className="fa-solid fa-circle-exclamation text-gray-400"></i>
+                                    <AlertCircle size="1em" className="text-gray-400" />
                                 </div>
                                 <div className="font-semibold">No Approved Users Yet</div>
                                 <div className="text-sm">Gate pass approvals will appear here.</div>
@@ -23,7 +24,7 @@ const GatePassApprovedList = ({ list = null }) => {
                     )
                 ) : (
                     <div className="w-full grid place-items-center py-10">
-                        <CircleReload size={3} />
+                        <ListSkeleton rows={4} />
                     </div>
                 )}
             </div>

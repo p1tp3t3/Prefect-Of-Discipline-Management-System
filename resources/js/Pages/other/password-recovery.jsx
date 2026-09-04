@@ -4,7 +4,7 @@ import OTP from "./password-recovery/otp"
 import RecoverPassword from "./password-recovery/recover-password"
 import { useState } from "react"
 import { sendData } from "@/others/function"
-import Reload from "@/Components/reload/reload"
+import { useReload } from "@/context-provider/reload-provider"
 
 
 const PasswordRecovery = () => {
@@ -14,22 +14,13 @@ const PasswordRecovery = () => {
     const [data, setData] = useState({ username: '' }),
           [contact, setContact] = useState(null),
           [generatedPin, setGeneratedPin] = useState(0),
-          [reload, setReload] = useState(false),
-          [reloadType, setReloadType] = useState(""),
-          [reloadLabel, setReloadLabel] = useState(""),
           [clickedOk, setClickOk] = useState(false)
-    
+
+    const { loadRegister } = useReload()
+
     const handleChange = (e) => {
         change(e, setData)
     }
-    const loadRegister = (r, t, l) => {
-        setReload(r);
-        setReloadType(t);
-        setReloadLabel(l);
-    };
-    const isReload = () => {
-        return reload ? "opacity-1 z-50" : "opacity-0 z-[-1]";
-    };
 
     const showOtp = t => {
         const pin =  Math.floor(Math.random() * (999999 - 100000 + 1)) + 100000
@@ -68,11 +59,6 @@ const PasswordRecovery = () => {
 
     return (
         <>
-        <Reload
-            transition={isReload()}
-            type={reloadType}
-            label={reloadLabel}
-        />
         {nextPage(next)}
         </>
     )

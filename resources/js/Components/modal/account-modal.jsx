@@ -2,11 +2,12 @@ import { getProfilePic } from "@/others/function"
 import ProfilePic from "../other/profile-pic"
 import { Link, router } from "@inertiajs/react"
 import { motion, AnimatePresence } from "framer-motion"
+import { User, Settings, Wrench, LogOut } from "lucide-react"
 
 const AccountModal = (props) => {
     const popup = (props.click) ? 'z-[1] opacity-1 visible' : 'z-[-1] opacity-0 invisible',
           user = props.user,
-          settings = (user.user_type == 'prefect' || user.user_type == 'itrc')
+          identity = props.identity ?? user
 
     const listStyle = 'px-2 py-2 cursor-pointer text-black text-[0.8em] rounded-[5px] flex gap-2 items-center transition-[0.3s] hover:bg-gray-400/20'
     return (
@@ -24,9 +25,9 @@ const AccountModal = (props) => {
                 <div className="">
                     <div className="flex gap-1 items-center justify-center py-4">
                         <div className="grid place-items-center">
-                            <ProfilePic src={getProfilePic(user.profile_picture, user.sex)} size={5} />
+                            <ProfilePic src={getProfilePic(identity.profile?.profile_picture, identity.profile?.sex)} size={5} />
                             <div className="text-center">
-                                <p className="text-[1.1em]"><b>{`${user.first_name} ${user.last_name}`}</b></p>
+                                <p className="text-[1.1em]"><b>{`${identity.profile?.first_name ?? ''} ${identity.profile?.last_name ?? ''}`}</b></p>
                                 <p className="text-[0.8em]"><b>@{user.username}</b></p>
                             </div>
                         </div>
@@ -37,7 +38,7 @@ const AccountModal = (props) => {
                             <Link href={`/profile/${props.user.username}`}>
                                 <li className={listStyle}>
                                     <div className="h-[1.8rem] w-[1.8rem] bg-gray-500 text-[1.2em] text-white rounded-[100%] grid place-items-center">
-                                        <i className="fa-solid fa-user"></i>
+                                        <User size={16} />
                                     </div>
                                     <div>See Profile</div>
                                 </li>
@@ -45,16 +46,16 @@ const AccountModal = (props) => {
                             <Link href={'/settings/' + user.username}>
                                 <li className={listStyle}>
                                     <div className="h-[1.8rem] w-[1.8rem] bg-gray-500 text-[1.2em] text-white rounded-[100%] grid place-items-center">
-                                        <i className="fa-solid fa-gear"></i>
+                                        <Settings size={16} />
                                     </div>
                                     <div>Account Settings</div>
                                 </li>
                             </Link>
-                            {(user.user_type == 'itrc' || user.user_type == 'prefect') &&
+                            {(user.role == 'super_admin' || user.role == 'sub_admin') &&
                             <Link href='/maintenance'>
                                 <li className={listStyle}>
                                     <div className="h-[1.8rem] w-[1.8rem] bg-gray-500 text-[1.2em] text-white rounded-[100%] grid place-items-center">
-                                        <i className="fa-solid fa-wrench"></i>
+                                        <Wrench size={16} />
                                     </div>
                                     <div>Maintenance</div>
                                 </li>
@@ -68,7 +69,7 @@ const AccountModal = (props) => {
                             >
                                 <li className={listStyle}>
                                     <div className="h-[1.8rem] w-[1.8rem] bg-gray-500 text-[1.2em] text-white rounded-[100%] grid place-items-center">
-                                        <i className="fa-solid fa-right-from-bracket"></i>
+                                        <LogOut size={16} />
                                     </div>
                                     <div>Log Out</div>
                                 </li>

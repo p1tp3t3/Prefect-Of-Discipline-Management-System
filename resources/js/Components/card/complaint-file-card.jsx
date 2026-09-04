@@ -3,6 +3,7 @@ import ProfilePic from "../other/profile-pic"
 import pdf from "../../pdf/test-pdf.pdf"
 import AuthContext from "@/context-provider/auth-provider"
 import { useContext } from "react"
+import { Eye, AlertCircle, FileText } from "lucide-react"
 
 const ComplaintFileCard = ({ data, viewComplaint, viewViolation }) => {
     const { usr } = useContext(AuthContext)
@@ -22,16 +23,16 @@ const ComplaintFileCard = ({ data, viewComplaint, viewViolation }) => {
                         <div className="flex gap-2 items-center text-[0.9em]">
                             {usr.user_type == 'prefect' && 
                             <button onClick={viewComplaint}>
-                                <i className="fa-solid fa-eye"></i>
+                                <Eye size={14} />
                             </button>}
                             {usr.user_type == 'prefect' &&
                             <button onClick={viewViolation}>
-                                <i className="fa-solid fa-circle-exclamation"></i>
+                                <AlertCircle size={14} />
                             </button>}
                         </div>
                     </div>
                     <div className="text-[4em] text-center text-gray-300">
-                        <i className="fa-solid fa-file"></i>
+                        <FileText size="1em" />
                     </div>
                 </div>
                 <div className="text-[0.7em] px-3 py-1 bg-white">

@@ -1,40 +1,21 @@
 import ViewStudentIncidentListModal from "@/Components/modal/view/view-student-incident-list-modal"
 import CircleReload from "@/Components/reload/circle-reload"
 import { useEffect, useState } from "react"
-import { APIRequest } from "@/others/classes/api-req"
-import Reload from "@/Components/reload/reload"
+import { RiskPredictionService } from "@/others/services/risk-prediction-service"
+import { useReload } from "@/context-provider/reload-provider"
 import AuthLayout from "@/Layouts/auth-layout"
 
 const StudentRiskPrediction = (props) => {
-    const [data, setData] = useState(null),
-          [reload, setReload] = useState(false),
-          [reloadType, setReloadType] = useState(""),
-          [reloadLabel, setReloadLabel] = useState("")
-    
+    const [data, setData] = useState(null)
+
     useEffect(() => {
-        const api = new APIRequest(`/api/student/incident/list/${props.student.id}`, 'get', {}, setData)
-        api.fetchData()
+        RiskPredictionService.getStudentIncidentList(props.student.id, setData)
     }, [])
 
-
-    const isReload = () => {
-        return reload ? "opacity-1 z-50" : "opacity-0 z-[-1]";
-    };
-    const loadRegister = (r, t, l) => {
-        setReload(r);
-        setReloadType(t);
-        setReloadLabel(l);
-    };
-    
+    const { loadRegister } = useReload();
 
     return (
         <>
-        <Reload
-            transition={isReload()}
-            type={reloadType}
-            label={reloadLabel}
-            onClose={setReload}
-        />
             <div className="py-8">
                 <div className="py-8 px-10 bg-white">
                     {data != null

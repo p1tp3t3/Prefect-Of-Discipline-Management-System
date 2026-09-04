@@ -1,4 +1,4 @@
-import { APIRequest } from "@/others/classes/api-req";
+import { ViolationService } from "@/others/services/violation-service";
 import { readableDate, readableTime, showWarningModal, toTitleCase } from "@/others/function";
 import ActionBtn from "@/Components/button/action-btn";
 import { DataGrid } from "@mui/x-data-grid";
@@ -12,20 +12,22 @@ const ManagePenalty = ({ list, events, reload, setter }) => {
             'Cancel',
             () => {
                 reload(true, 'text-wait', 'Deleting Penalty...')
-                const api = new APIRequest('/maintenance/penalty/delete', 'post', { id: e.id }, setter,
-                            () => {
-                                reload(true, 'success', 'Penalty Deleted Successfully')
-                            },
-                            (err) => {
-                                reload(true, 'error', err.response.data.message)
-                            })
-                api.fetchData()
+                ViolationService.deletePenalty(
+                    e.id,
+                    setter,
+                    () => {
+                        reload(true, 'success', 'Penalty Deleted Successfully')
+                    },
+                    (err) => {
+                        reload(true, 'error', err.response.data.message)
+                    }
+                )
             }
         )
     };
 
     return (
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 min-w-0 overflow-y-auto">
             <div className="grid gap-5">
                 <div className="flex justify-end">
                     <button className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 w-full sm:w-auto" onClick={() => events[0]('penalty', 'add')}>Add Penalty</button>

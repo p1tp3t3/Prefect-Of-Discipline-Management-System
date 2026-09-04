@@ -1,47 +1,36 @@
 import { getProfilePic, readableDate, readableTime, toTitleCase } from "@/others/function"
 import ProfilePic from "../other/profile-pic"
 import PaginationButton from "../button/pagination-btn"
+import { Table, TableHead, TableBody, TableRow, TableCell, TableContainer } from "@mui/material"
 
 
 const UserReportLogList = ({ list = null }) => {
     return (
         <div className="w-full px-5 py-3 bg-white rounded-md shadow-black/20 shadow-sm grid gap-3">
-            <table className="w-full border-collapse">
-                <thead className="border-b-[1px] border-gray-400 text-left">
-                    <th className="py-3">#</th>
-                    <th className="py-3">User</th>
-                    <th className="py-3">Action Type</th>
-                    <th className="py-3">Details</th>
-                    <th className="py-3">Date / Time</th>
-                </thead>
-                <tbody>
-                    {list.data != null
+            <TableContainer sx={{ minWidth: "650px" }}>
+            <Table sx={{ width: "100%" }}>
+                <TableHead sx={{ "& .MuiTableCell-root": { fontWeight: 700, borderBottom: "1px solid #9ca3af" } }}>
+                    <TableRow>
+                        <TableCell>#</TableCell>
+                        <TableCell>User</TableCell>
+                        <TableCell>Action Type</TableCell>
+                        <TableCell>Details</TableCell>
+                        <TableCell>Date / Time</TableCell>
+                    </TableRow>
+                </TableHead>
+                <TableBody>
+                    {list.data != null && list.data.length != 0
                     ?
-                    list.data.length != 0
-                    ?
-                    list.data.map((e, i) => <Row i={i} data={e} />)
+                    list.data.map((e, i) => <Row key={e.id ?? i} i={i} data={e} />)
                     :
-                    <tr>
-                        <td colspan={5}>
-                            <div className="flex justify-center items-center w-full">
-                                <div className="text-center py-10 text-[0.9em]">
-                                    No Logs Yet
-                                </div>
-                            </div>
-                        </td>
-                    </tr>
-                    :
-                    <tr>
-                        <td colspan={5}>
-                            <div className="flex justify-center items-center w-full">
-                                <div className="text-center py-10 text-[0.9em]">
-                                    No Logs Yet
-                                </div>
-                            </div>
-                        </td>
-                    </tr>}
-                </tbody>
-            </table>
+                    <TableRow>
+                        <TableCell align="center" sx={{ py: 5, fontSize: "0.9em" }} colSpan={5}>
+                            No Logs Yet
+                        </TableCell>
+                    </TableRow>}
+                </TableBody>
+            </Table>
+            </TableContainer>
             {(list.data.length != 0 && list.data.length >= 50) &&
             <div className="justify-self-end">
                 <PaginationButton list={list.links} />
@@ -52,13 +41,11 @@ const UserReportLogList = ({ list = null }) => {
 
 const Row = ({ i, data }) => {
     return (
-        <tr className="border-b">
-            <td className="py-1">
-                <div className="flex gap-5 text-[0.8em]">
-                    {i + 1}.
-                </div>
-            </td>
-            <td className="py-1">
+        <TableRow>
+            <TableCell sx={{ fontSize: "0.8em" }}>
+                {i + 1}.
+            </TableCell>
+            <TableCell>
                 <div className="flex gap-3 items-center">
                     <div className="z-1">
                         <ProfilePic
@@ -74,23 +61,17 @@ const Row = ({ i, data }) => {
                         <p className="text-[0.7em]">{`${toTitleCase(data.user?.role ?? "")}`}</p>
                     </div>
                 </div>
-            </td>
-            <td className="py-1">
-                <div className="flex gap-5 text-[0.8em]">
-                    {toTitleCase(data.action_type)}
-                </div>
-            </td>
-            <td className="py-1">
-                <div className="flex gap-5 text-[0.8em]">
-                    {toTitleCase(data.details)}
-                </div>
-            </td>
-            <td className="py-1">
-                <div className="flex gap-5 text-[0.8em]">
-                    {readableDate(data.created_at)} ({readableTime(data.created_at)})
-                </div>
-            </td>
-        </tr>
+            </TableCell>
+            <TableCell sx={{ fontSize: "0.8em" }}>
+                {toTitleCase(data.action_type)}
+            </TableCell>
+            <TableCell sx={{ fontSize: "0.8em" }}>
+                {toTitleCase(data.details)}
+            </TableCell>
+            <TableCell sx={{ fontSize: "0.8em" }}>
+                {readableDate(data.created_at)} ({readableTime(data.created_at)})
+            </TableCell>
+        </TableRow>
     )
 }
 

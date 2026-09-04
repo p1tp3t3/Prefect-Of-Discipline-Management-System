@@ -1,7 +1,7 @@
 import SearchUserBar from "@/Components/input/search-user-bar"
 import GatePassApprovedList from "@/Components/list/gatepass-approved-list"
 import AuthLayout from "@/Layouts/auth-layout"
-import { APIRequest } from "@/others/classes/api-req"
+import { GatePassService } from "@/others/services/gatepass-service"
 import { useState, useEffect } from "react"
 
 
@@ -26,9 +26,7 @@ const StaffGatePassVerification = (props) => {
     const fetchApprovedUsers = () => {
         setGatePassApprovedList(null)
         setSearchedApprovedUser(null)
-        const api = new APIRequest('/gatepass/approved-users', 'post')
-        api.setSetter(setGatePassApprovedList)
-        api.fetchData()
+        GatePassService.getApprovedUsers(setGatePassApprovedList)
         setSearch('')
     }
 

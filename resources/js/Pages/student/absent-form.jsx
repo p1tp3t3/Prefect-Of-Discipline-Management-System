@@ -2,32 +2,16 @@ import AuthLayout from "@/Layouts/auth-layout"
 import AbsentFormList from "@/Components/list/absent-form-list"
 import RequestAbsentFormModal from "@/Components/modal/submission-form/request-absent-form-modal"
 import { useState } from "react"
-import Reload from "@/Components/reload/reload"
+import { useReload } from "@/context-provider/reload-provider"
 import Btn from '@/Components/button/normal-btn'
 
 
 const AbsentForm = (props) => {
-    const [requestAbsentForm, openRequestAbsentForm] = useState(true),
-          [reload, setReload] = useState(false),
-          [reloadType, setReloadType] = useState(""),
-          [reloadLabel, setReloadLabel] = useState("")
+    const [requestAbsentForm, openRequestAbsentForm] = useState(true)
 
-    const isReload = () => {
-        return reload ? "opacity-1 z-50" : "opacity-0 z-[-1]";
-    };
-    const loadRegister = (r, t, l) => {
-        setReload(r);
-        setReloadType(t);
-        setReloadLabel(l);
-    };
+    const { loadRegister } = useReload();
     return (
         <>
-        <Reload
-            transition={isReload()}
-            type={reloadType}
-            label={reloadLabel}
-            onClose={setReload}
-        />
             <div className="w-full py-4">
                 <div className="w-full grid gap-5 relative">
                     {/* Header */}

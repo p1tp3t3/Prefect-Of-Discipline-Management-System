@@ -1,5 +1,5 @@
 import AuthLayout from "@/Layouts/auth-layout"
-import TabBtn from "@/Components/button/tab-btn"
+import TabSwitcher from "@/Components/other/tab-switcher"
 import { useState } from "react"
 import { showOutputModal, showWarningModal, toTitleCase } from "@/others/function"
 import ArchiveList from "@/Components/list/archive-list"
@@ -7,8 +7,8 @@ import ViewComplaintModal from "@/Components/modal/view/view-complaint-modal"
 import ViewReferralModal from "@/Components/modal/view/view-referral-modal"
 import ViewAbsentFormModal from "@/Components/modal/view/view-absent-form-modal"
 import PaginationButton from "@/Components/button/pagination-btn"
-import Reload from "@/Components/reload/reload"
-import { APIRequest } from "@/others/classes/api-req"
+import { useReload } from "@/context-provider/reload-provider"
+import { ReportArchiveService } from "@/others/services/report-archive-service"
 import { router } from "@inertiajs/react"
 import SearchUserBar from "@/Components/input/search-user-bar"
 import NoteAbsentFormModal from "@/Components/modal/submission-form/note-absent-form-modal"
@@ -16,10 +16,10 @@ import NoteAbsentFormModal from "@/Components/modal/submission-form/note-absent-
 
 const PrefectArchive = (props) => {
     const optionTab = [
-        { val: 'all', label: 'All' },
-        { val: 'complaint', label: 'Complaint' },
-        { val: 'referral', label: 'Referral' },
-        { val: 'absent form', label: 'Absent Form' },
+        { key: 'all', label: 'All' },
+        { key: 'complaint', label: 'Complaint' },
+        { key: 'referral', label: 'Referral' },
+        { key: 'absent form', label: 'Absent Form' },
     ]
     const url = new URLSearchParams(window.location.search)
     const [choose, setChoose] = useState(url.has("type") ? url.get("type") : "all"),
@@ -28,12 +28,9 @@ const PrefectArchive = (props) => {
           [absent, openAbsentForm] = useState(false),
           [id, setDocId] = useState(''),
 
-          [archive_list, setArchiveList] = useState(props.document.data),
-          
-          [reload, setReload] = useState(false),
-          [reloadType, setReloadType] = useState(""),
-          [reloadLabel, setReloadLabel] = useState("")
+          [archive_list, setArchiveList] = useState(props.document.data)
 
+    const { loadRegister } = useReload()
     const [search, setSearch] = useState("")
     const [noteAbsent, openNoteAbsent] = useState(false)
 
@@ -56,11 +53,6 @@ const PrefectArchive = (props) => {
             openAbsentForm(true)
         }
     }
-    const loadRegister = (r, t, l) => {
-            setReload(r);
-            setReloadType(t);
-            setReloadLabel(l);
-        };
     const recoverDocument = (i, t, usr) => {
         const data = {
             id: i,
@@ -73,10 +65,8 @@ const PrefectArchive = (props) => {
                 "Cancel",
                 () => {
                     loadRegister(true, 'text-wait', `Unarchiving ${toTitleCase(t)} No. ${i}. is Processing`)
-                    const api = new APIRequest(
-                        '/prefect/archive/recover', 
-                        'post', 
-                        data, 
+                    ReportArchiveService.recover(
+                        i, t,
                         (e) => console.log(e),
                         () => {
                             showOutputModal(
@@ -98,7 +88,6 @@ const PrefectArchive = (props) => {
                             )
                         }
                     )
-                    api.fetchData()
                 }
             );
         }if(t == 'absent form') {
@@ -116,11 +105,8 @@ const PrefectArchive = (props) => {
             'Cancel',
             () => {
                 loadRegister(true, 'text-wait', `Removing ${toTitleCase(docType)} No. ${docId} In The Archive is Processing`)
-                const api = new APIRequest(
-                    `/prefect/archive/delete`,
-                    'post',
-                    { type: docType, id: docId },
-                    (e) => console.log(e),
+                ReportArchiveService.deleteArchived(
+                    docType, docId,
                     () => {
                         showOutputModal(
                             `${toTitleCase(docType)} No. ${docId} Has Been Removed Successfully`,
@@ -141,23 +127,11 @@ const PrefectArchive = (props) => {
                         )
                     }
                 )
-                api.fetchData()
             }
         )
     }
-    const isReload = () => {
-        return reload ? "opacity-1 z-50" : "opacity-0 z-[-1]";
-    };
-    
-
     return (
         <>
-        <Reload
-            transition={isReload()}
-            type={reloadType}
-            label={reloadLabel}
-            onClose={setReload}
-        />
         <NoteAbsentFormModal
             close={noteAbsent}
             closeModal={openNoteAbsent}
@@ -211,12 +185,7 @@ const PrefectArchive = (props) => {
                             />
                         </div>
                         <div className="w-full">
-                            {<TabBtn 
-                                list={optionTab}
-                                option={choose} 
-                                handleSelect={handleSelect} 
-                                className='h-[2.2rem]'
-                            />}
+                            <TabSwitcher tabs={optionTab} value={choose} onChange={handleSelect} />
                         </div>
                     </div>
                     <div>

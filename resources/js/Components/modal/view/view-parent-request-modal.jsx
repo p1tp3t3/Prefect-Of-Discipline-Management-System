@@ -1,6 +1,6 @@
 import CircleReload from "@/Components/reload/circle-reload"
 import UpModal from "../up-modal"
-import { APIRequest } from "@/others/classes/api-req"
+import { FamilyService } from "@/others/services/family-service"
 import { useState, useEffect, useMemo } from "react"
 import { toTitleCase } from "@/others/function"
 
@@ -19,19 +19,14 @@ const ViewParentRequestModal = (props) => {
     }, [props.close])
 
     const getParentReqInfo = () => {
-        const id = props.id
-        const api = new APIRequest(
-            `/super-admin/parent-register/get/${id}`,
-            'get',
-            {},
+        FamilyService.getParentRequestInfo(
+            props.id,
             (res) => {
                 setData(res)
                 setReload(false)
             },
-            () => setReload(false),
             () => setReload(false)
         )
-        api.fetchData()
     }
 
     return (

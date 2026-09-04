@@ -52,23 +52,23 @@ $windowsIconList = [
 
         <title inertia>{{ config('app.name', 'Laravel') }}</title>
 
+        <!-- PWA -->
+        <meta name="theme-color" content="#111827">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+        <meta name="apple-mobile-web-app-title" content="POD System">
+        <link rel="manifest" href="/manifest.json"/>
+        @foreach ($iosIconList as $icon)
+            <link rel="apple-touch-icon" sizes="{{ $icon['size'] }}" href="{{ $icon['path'] }}">
+        @endforeach
+
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" />
-        <link rel="manifest" href="/manifest.json"/>
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" />
 
-
-        <?php
-        /*
-        @foreach ($androidIconList as $icon)
-            <link rel="apple-touch-icon" sizes={{ $icon['size'] }} href={{ $icon['path'] }}>
-        @endforeach
-        @foreach ($iosIconList as $icon)
-            <link rel="apple-touch-startup-image" sizes={{ $icon['size'] }} href={{ $icon['path'] }}>
-        @endforeach*/
-        ?>
         <!-- Scripts -->
         @routes
         @viteReactRefresh

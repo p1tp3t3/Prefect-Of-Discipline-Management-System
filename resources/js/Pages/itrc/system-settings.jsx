@@ -2,81 +2,35 @@ import { useState } from "react";
 import AuthLayout from "@/Layouts/auth-layout";
 import FormTextfield from "@/Components/input/form-input";
 import FormButton from "@/Components/button/button";
-import Reload from "@/Components/reload/reload";
 import AccountSettingsForm from "@/Components/other/account-settings-form";
-import { APIRequest } from "@/others/classes/api-req";
+import { SystemService } from "@/others/services/system-service";
 import { change, showOutputModal } from "@/others/function";
+import TabSwitcher from "@/Components/other/tab-switcher";
+import { useReload } from "@/context-provider/reload-provider";
 
 const SystemSettings = (props) => {
     const [activeTab, setActiveTab] = useState("login_portal");
-    const [reload, setReload] = useState(false);
-    const [reloadType, setReloadType] = useState("");
-    const [reloadLabel, setReloadLabel] = useState("");
-
-    const loadRegister = (r, t = "", l = "") => {
-        setReload(r);
-        setReloadType(t);
-        setReloadLabel(l);
-    };
+    const { loadRegister } = useReload();
 
     return (
         <>
-            <Reload
-                transition={reload ? "opacity-1 z-50" : "opacity-0 z-[-1]"}
-                type={reloadType}
-                label={reloadLabel}
-                onClose={(e) => setReload(e)}
-            />
-
-            <div className="grid gap-8 px-4 sm:px-6 lg:px-10">
+            <div className="grid gap-8">
                 <div className="pt-6 sm:pt-10 grid w-full gap-3">
                     <h1 className="text-xl sm:text-2xl font-bold text-gray-800">
                         System Settings
                     </h1>
 
                     {/* Tabs */}
-                    <div className="flex flex-wrap border-b border-gray-200">
-                        <button
-                            className={`px-3 sm:px-4 py-2 ${
-                                activeTab === "system_name"
-                                    ? "border-b-2 border-blue-500 text-blue-500"
-                                    : "text-gray-600"
-                            }`}
-                            onClick={() => setActiveTab("system_name")}
-                        >
-                            System Name
-                        </button>
-                        <button
-                            className={`px-3 sm:px-4 py-2 ${
-                                activeTab === "login_portal"
-                                    ? "border-b-2 border-blue-500 text-blue-500"
-                                    : "text-gray-600"
-                            }`}
-                            onClick={() => setActiveTab("login_portal")}
-                        >
-                            Super Admin Login Portal
-                        </button>
-                        <button
-                            className={`px-3 sm:px-4 py-2 ${
-                                activeTab === "mail"
-                                    ? "border-b-2 border-blue-500 text-blue-500"
-                                    : "text-gray-600"
-                            }`}
-                            onClick={() => setActiveTab("mail")}
-                        >
-                            Mail Configuration
-                        </button>
-                        <button
-                            className={`px-3 sm:px-4 py-2 ${
-                                activeTab === "account"
-                                    ? "border-b-2 border-blue-500 text-blue-500"
-                                    : "text-gray-600"
-                            }`}
-                            onClick={() => setActiveTab("account")}
-                        >
-                            Account Settings
-                        </button>
-                    </div>
+                    <TabSwitcher
+                        tabs={[
+                            { key: "system_name", label: "System Name" },
+                            { key: "login_portal", label: "Super Admin Login Portal" },
+                            { key: "mail", label: "Mail Configuration" },
+                            { key: "account", label: "Account Settings" },
+                        ]}
+                        value={activeTab}
+                        onChange={setActiveTab}
+                    />
 
                     <div className="py-6 sm:py-10">
                         {activeTab === "system_name" && (
@@ -128,11 +82,8 @@ const SystemNameTab = ({ appName, reload }) => {
 
         reload(true, "text-wait", "Updating system name...");
 
-        const api = new APIRequest(
-            "/system-settings/app-name",
-            "post",
-            { app_name: name },
-            () => {},
+        SystemService.updateAppName(
+            name,
             () => {
                 reload(true, "success", "System Name Updated Successfully");
             },
@@ -140,7 +91,6 @@ const SystemNameTab = ({ appName, reload }) => {
                 reload(true, "error", "Failed to Update System Name");
             }
         );
-        api.fetchData();
     };
 
     return (
@@ -176,11 +126,8 @@ const LoginPortalPasswordTab = ({ hasPassword, reload }) => {
 
         reload(true, "text-wait", "Updating login portal password...");
 
-        const api = new APIRequest(
-            "/system-settings/login-portal-password",
-            "post",
+        SystemService.updateLoginPortalPassword(
             data,
-            () => {},
             () => {
                 reload(true, "success", "Login Portal Password Updated Successfully");
                 setData({ password: "", password_confirmation: "" });
@@ -194,7 +141,6 @@ const LoginPortalPasswordTab = ({ hasPassword, reload }) => {
                 }
             }
         );
-        api.fetchData();
     };
 
     return (
@@ -252,11 +198,8 @@ const MailConfigTab = ({ mailConfig, reload }) => {
 
         reload(true, "text-wait", "Saving mail configuration...");
 
-        const api = new APIRequest(
-            "/system-settings/mail-config",
-            "post",
+        SystemService.saveMailConfig(
             data,
-            () => {},
             () => {
                 reload(true, "success", "Mail Configuration Saved Successfully");
                 setData((prev) => ({ ...prev, password: "" }));
@@ -267,7 +210,6 @@ const MailConfigTab = ({ mailConfig, reload }) => {
                 setError(err?.response?.data?.errors || {});
             }
         );
-        api.fetchData();
     };
 
     const handleSendTest = (e) => {
@@ -276,11 +218,8 @@ const MailConfigTab = ({ mailConfig, reload }) => {
 
         reload(true, "text-wait", "Sending test email...");
 
-        const api = new APIRequest(
-            "/system-settings/mail-config/test",
-            "post",
-            { test_email: testEmail },
-            () => {},
+        SystemService.sendTestEmail(
+            testEmail,
             () => {
                 reload(true, "success", "Test Email Sent Successfully. Please Check The Inbox.");
             },
@@ -288,7 +227,6 @@ const MailConfigTab = ({ mailConfig, reload }) => {
                 reload(true, "error", err?.response?.data?.message || "Failed To Send Test Email");
             }
         );
-        api.fetchData();
     };
 
     return (

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { APIRequest } from "@/others/classes/api-req"
+import { ReferralService } from "@/others/services/referral-service"
 import NotifDisplayLayout from "@/Layouts/notif-display-layout"
 import CircleReload from "@/Components/reload/circle-reload"
 import ViewReferralModal from "@/Components/modal/view/view-referral-modal"
@@ -8,10 +8,8 @@ const ReferralNotification = (props) => {
     const [data, setData] = useState(null)
 
     useEffect(() => {
-        const id = new URLSearchParams(window.location.search).get('referral_id'),
-                api = new APIRequest(`/referral/get/${id}`, 'post', {}, setData)
-
-        api.fetchData()
+        const id = new URLSearchParams(window.location.search).get('referral_id')
+        ReferralService.getReferralInfo(id, setData)
     }, [])
     return  (
             <div className="py-8">

@@ -1,6 +1,7 @@
 import UpModal from "../up-modal"
 import { useState, useEffect } from "react"
-import { APIRequest } from "@/others/classes/api-req"
+import { RiskPredictionService } from "@/others/services/risk-prediction-service"
+import { AlertCircle } from "lucide-react"
 import { 
   getProfilePic, 
   readableDate, 
@@ -13,6 +14,7 @@ import CircleReload from "@/Components/reload/circle-reload"
 import { Link } from "@inertiajs/react"
 import QuantityCard from "@/Components/card/qntty-statistic-card"
 import GaugeChart from "@/Components/card/gauge-chart-statistic-card"
+import { TriangleAlert } from "lucide-react"
 
 const ViewStudentIncidentListModal = (props) => {
   const [data, setData] = useState(null)
@@ -29,9 +31,7 @@ const ViewStudentIncidentListModal = (props) => {
   }, [props.close])
 
   const getIncidentInfoInfo = () => {
-    const link = `/api/student/incident/list/${props.student_id}`
-    const api = new APIRequest(link, "get", {}, setData)
-    api.fetchData()
+    RiskPredictionService.getStudentIncidentList(props.student_id, setData)
   }
 
   return (
@@ -89,7 +89,6 @@ const Body = ({ data, usr, type }) => {
 
 
   const handleNotify = () => {
-    const link = `/prefect/violation/risk/notify`
     const d = {
       student_id: user.id,
       risk_score: Math.round(data.risk_score * 100),
@@ -111,8 +110,7 @@ const Body = ({ data, usr, type }) => {
         `Notify ${label}`,
         "Cancel",
         () => {
-          const api = new APIRequest(link, "post", d, () => {}, success, error)
-          api.sendPostData()
+          RiskPredictionService.notifyRisk(d, success, error)
         }
       )
     } else {
@@ -145,10 +143,10 @@ const Body = ({ data, usr, type }) => {
 
       <div className="mt-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <QuantityCard h="h-[9rem]" num={data.total_incidents} icon="fa-triangle-exclamation" label="Total Incidents" color={{ bg: "bg-white border" }} />
-          <QuantityCard h="h-[9rem]" num={data.total_violations} icon="fa-triangle-exclamation" label="Total Violations" color={{ bg: "bg-white border" }} />
-          <QuantityCard h="h-[9rem]" num={data.total_repeated_violations} icon="fa-triangle-exclamation" label="Repeated Violations" color={{ bg: "bg-white border" }} />
-          <QuantityCard h="h-[9rem]" num={data.total_no_violations} icon="fa-triangle-exclamation" label="Resolved Cases Without Violations" color={{ bg: "bg-white border" }} />
+          <QuantityCard h="h-[9rem]" num={data.total_incidents} icon={TriangleAlert} label="Total Incidents" color={{ bg: "bg-white border" }} />
+          <QuantityCard h="h-[9rem]" num={data.total_violations} icon={TriangleAlert} label="Total Violations" color={{ bg: "bg-white border" }} />
+          <QuantityCard h="h-[9rem]" num={data.total_repeated_violations} icon={TriangleAlert} label="Repeated Violations" color={{ bg: "bg-white border" }} />
+          <QuantityCard h="h-[9rem]" num={data.total_no_violations} icon={TriangleAlert} label="Resolved Cases Without Violations" color={{ bg: "bg-white border" }} />
         </div>
       </div>
 
@@ -164,7 +162,7 @@ const Body = ({ data, usr, type }) => {
                 ))
               ) : (
                 <div className="text-center text-gray-500 py-10">
-                  <i className="fa-solid fa-circle-exclamation text-2xl"></i>
+                  <AlertCircle size="1.5rem" />
                   <h1 className="text-lg">No Incidents Yet</h1>
                 </div>
               )}
@@ -193,7 +191,7 @@ const Body = ({ data, usr, type }) => {
                 ))
               ) : (
                 <div className="text-center text-gray-500 py-10">
-                  <i className="fa-solid fa-circle-exclamation text-2xl"></i>
+                  <AlertCircle size="1.5rem" />
                   <h1 className="text-lg">No Violations Yet</h1>
                 </div>
               )}
@@ -212,7 +210,7 @@ const Body = ({ data, usr, type }) => {
               ))
             ) : (
               <div className="text-center text-gray-500 py-10">
-                <i className="fa-solid fa-circle-exclamation text-2xl"></i>
+                <AlertCircle size="1.5rem" />
                 <h1 className="text-lg">No Violations Yet</h1>
               </div>
             )}
@@ -229,7 +227,7 @@ const Body = ({ data, usr, type }) => {
                 ))
               ) : (
                 <div className="text-center text-gray-500 py-10">
-                  <i className="fa-solid fa-circle-exclamation text-2xl"></i>
+                  <AlertCircle size="1.5rem" />
                   <h1 className="text-lg">No Resolved Cases Without Violations Yet</h1>
                 </div>
               )}

@@ -25,6 +25,7 @@ class Complaint extends Model
         'rejected_reason',
         'rejected_at',
         'confirmed_at',
+        'offense_issued_at',
         'complaint_status',
         'resolved_at',
         'archived_at',

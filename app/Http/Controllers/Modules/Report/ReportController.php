@@ -3,12 +3,17 @@
 namespace App\Http\Controllers\Modules\Report;
 
 use App\Exports\ActionLogReportExport;
-use App\Exports\IncidentReportExport;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\ActionLogResource;
+use App\Jobs\GenerateReportJob;
+use App\Models\Absence;
 use App\Models\ActionLog;
+use App\Models\Appointment;
 use App\Models\Complaint;
 use App\Models\ComplaintSubjectViolation;
 use App\Models\ComplaintSubject;
+use App\Models\Enrollment;
+use App\Models\GatePass;
 use App\Models\Program;
 use App\Models\Report;
 use App\Models\User;
@@ -21,17 +26,15 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Maatwebsite\Excel\Facades\Excel;
-use PhpOffice\PhpWord\TemplateProcessor;
 
 class ReportController extends Controller
 {
     public function index() {
-        $archive = new ArchiveController();
         $top5Students = ComplaintSubjectViolation::select(
                                             'student_id',
                                             DB::raw('COUNT(*) as total_offenses')
                                         )
-                                        ->with(['user.program']) 
+                                        ->with(['user.profile', 'user.program']) 
                                         ->whereHas('complaint', function ($q) {
                                             $q->where('complaint_status', 'resolved');
                                         })
@@ -136,8 +139,22 @@ class ReportController extends Controller
             'violation_list' => $violation,
             'incident_list' => $incidentList,
             'programs' => Program::all(['id', 'name']),
-            'students' => User::with('program')->where('role', 'student')->get(),
-            'violation_program' => $data
+            'students' => User::with(['profile', 'program'])->where('role', 'student')->get(),
+            'school_years' => Enrollment::select('school_year')->distinct()->orderByDesc('school_year')->pluck('school_year'),
+            'violation_program' => $data,
+            'tardy_report' => Absence::with(['user.profile', 'user.program', 'user.enrollments'])
+                            ->whereNotNull('confirmed_at')
+                            ->whereJsonContains('reason', 'Excused Tardiness')
+                            ->latest('confirmed_at')
+                            ->get(),
+            'appointment_report' => Appointment::with(['user.profile', 'user.program', 'user.enrollments'])
+                            ->where('appointment_status', 'accepted')
+                            ->latest('confirmed_at')
+                            ->get(),
+            'gatepass_report' => GatePass::with(['user.profile', 'user.program', 'user.enrollments'])
+                            ->whereNotNull('confirmed_at')
+                            ->latest('confirmed_at')
+                            ->get(),
         ]);
     }
     public function itrcIndex() {
@@ -147,222 +164,100 @@ class ReportController extends Controller
             'action_log_list' => self::getAllActionLogs()
         ]);
     }
+    /**
+     * Report generation is queued (GenerateReportJob) instead of running
+     * inline: dompdf/PhpSpreadsheet rendering blocked the request for
+     * every requester, and two prefects generating a report at the same
+     * moment used to overwrite the same shared public_path() file.
+     */
     public function store(Request $request)
     {
-        $isIncident = $request->type == 'incident';
+        GenerateReportJob::dispatch($request->all(), auth()->id());
 
-        $incident = self::getAllReport()
-            ->whereHas('complaint', function ($q) use ($request, $isIncident) {
-                $q->whereBetween($isIncident ? 'complaint.created_at' : 'complaint.offense_issued_at', [$request->date_from, $request->date_to]);
-            });
-
-
-        /** ----------------------------------------------------
-         * FILTERS
-         * ----------------------------------------------------
-         */
-
-        // INDIVIDUAL student filter
-
-        if ($request->boolean('individual')) {
-            $incident = $incident->where('student_id', $request->student_id);
-        } else {
-            // PROGRAM filter
-            if ($request->program && $request->program !== 'all') {
-                $incident = $incident->whereHas('user.enrollments', function ($q) use ($request) {
-                    $q->where('program_id', $request->program);
-                });
-            }
-        }
-
-
-        if($isIncident) {
-            // INCIDENT type filter
-            if ($request->report_type !== 'all') {
-                $incident = $incident->whereHas('complaint', function ($q) use ($request) {
-                    $q->where('complaint.incident_id', $request->report_type);
-                });
-            }
-             /** ----------------------------------------------------
-             * ORDER BY complaint.created_at DESC (safe rule)
-             * ----------------------------------------------------
-             */
-            $incident = $incident->orderByDesc(
-                Complaint::select('created_at')
-                    ->whereColumn('complaint.id', 'complaint_subject.complaint_id')
-            );
-        }else {
-            // VIOLATION type filter
-            if ($request->report_type !== 'all') {
-                $incident = $incident->whereHas('violation', function ($q) use ($request) {
-                    $q->where('violation.id', $request->report_type); // <-- FIXED
-                });
-            }
-
-            $incident = $incident->orderByDesc(
-                Complaint::select('offense_issued_at')
-                    ->whereColumn('complaint.id', 'complaint_subject_violation.complaint_id')
-            );
-        }
-        
-
-        $incident = $incident->get();
-       
-
-        /** ----------------------------------------------------
-         * BUILD EXPORT DATA
-         * ----------------------------------------------------
-         */
-        $excelHeader = [];
-        $i = 0;
-
-
-        if ($request->boolean('individual')) {
-
-            foreach ($incident as $inc) {
-                $id = ++$i;
-                $reported_since = $isIncident
-                                  ?
-                                  Carbon::parse($inc->complaint->created_at)->format('F j, Y g:i A')
-                                  :
-                                  Carbon::parse($inc->complaint->offense_issued_at)->format('F j, Y g:i A');
-
-                $excelHeader[] = $isIncident
-                    ?
-                    [
-                        'i' => $id,
-                        'complainant_name' => !is_null($inc->complaint->user) 
-                                            ? $inc->complaint->user->first_name . ' ' . $inc->complaint->user->middle_name . ' ' . $inc->complaint->user->last_name 
-                                            : $inc->complaint->complainant_name,
-                        'incident' => $inc->complaint->violation?->violation_name,
-                        'date_time' => $reported_since
-                    ] :
-                    [
-                        'i' => $id,
-                        'violation' => $inc->violation->violation_name,
-                        'status' => $inc->violation->offense_status ? 'Major' : 'Minor',
-                        'date_time' => $reported_since
-                    ];
-            }
-
-            $excelHeader = [
-                'data' => $excelHeader,
-                'student' => User::with('program')->where('id', $request->student_id)->first()->toArray()
-            ];
-
-        } else {
-
-            foreach ($incident as $inc) {
-                $id = ++$i;
-                $student = $inc->user;
-                $reported_since = $isIncident
-                                  ?
-                                  Carbon::parse($inc->complaint->created_at)->format('F j, Y g:i A')
-                                  :
-                                  Carbon::parse($inc->complaint->offense_issued_at)->format('F j, Y g:i A');
-
-                $data = [
-                        'i' => $id,
-                        'student_id' => $student->user_id,
-                        'name' => $student->first_name . ' ' . $student->middle_name . ' ' . $student->last_name,
-                        'program' => $student->program->name ?? '',
-                        'date_time' => $reported_since
-                ];
-                $excelHeader[] =  $isIncident
-                                  ?
-                                  array_merge($data, [
-                                    'complainant_name' => !is_null($inc->complaint->user) 
-                                            ? $inc->complaint->user->first_name . ' ' . $inc->complaint->user->middle_name . ' ' . $inc->complaint->user->last_name 
-                                            : $inc->complaint->complainant_name,
-                                    'incident' => $inc->complaint->violation?->violation_name,
-                                  ])
-                                  :
-                                  array_merge($data, [
-                                    'violation' => $inc->violation->violation_name,
-                                    'status' => $inc->violation->offense_status ? 'Major' : 'Minor',
-                                  ]);
-            }
-        }
-
-        return self::getFileType($request, $excelHeader, 'sample-file');
+        return response()->json(['message' => 'queued']);
     }
 
-
-    public function getFileType($request, $collection, $filename) {
-        switch($request->file_type) {
-            case 'word':
-                $templatePath = public_path('docs/INCIDENT-REPORT-FORMAT_OVER-ALL.docx');
-                $template = new TemplateProcessor($templatePath);
-
-                // Set title
-                $template->setValue('report_title', $request->report_name ?? 'Incident Report');
-
-                // Clone and fill rows
-                $template->cloneRow('name', count($collection));
-                foreach ($collection as $index => $row) {
-                    $i = $index + 1;
-                    foreach ($row as $key => $value) {
-                        $template->setValue("{$key}#{$i}", $value);
-                    }
-                }
-
-                // Generate filenames
-                $timestamp = now()->format('Ymd_His');
-                $baseName = "incident-report-{$timestamp}";
-                $outputDocx = public_path("{$baseName}.docx");
-                $outputPdf = public_path("{$baseName}.pdf");
-
-                // Save the filled DOCX
-                $template->saveAs($outputDocx);
-
-                // ✅ Ensure the DOCX file exists and is not empty
-                if (!file_exists($outputDocx) || filesize($outputDocx) === 0) {
-                    throw new \Exception("DOCX file was not generated correctly: {$outputDocx}");
-                }
-                // Optionally, return the file as a download
-                return response()->download($outputDocx)->deleteFileAfterSend(true);
-            case 'pdf':
-                $reportFile = $request->boolean('individual') ? 'individual-student-incident-report' : 'incident-report';
-                $props = $request->boolean('individual') ? [
-                        'student_name' => $collection['student']['first_name'] . ' ' . $collection['student']['middle_name'] . ' ' . $collection['student']['last_name'],
-                        'student_id' => $collection['student']['id_number'],
-                        'profile_picture' => Storage::disk('public')->path("profile-pictures/{$collection['student']['profile_picture']}"),
-                        'program' => $collection['student']['program']['description'] ?? '',
-                        'civil_status' =>  $collection['student']['civil_status'],
-                        'data' => $collection['data']
-                    ] : [ 'data' => $collection ];
-
-                $pdf = Pdf::loadView("pdf.reports.$reportFile", array_merge($props, [
-                                                                'report_title' => $request->report_name,
-                                                                'from' => $request->date_from,
-                                                                'to' => $request->date_to
-                                                            ]));
-                $filePath = public_path('incident-report.pdf');
-
-                $pdf->save($filePath);
-                return response()->download($filePath)->deleteFileAfterSend(true);
-            case 'excel':
-                return Excel::download(
-                    new IncidentReportExport(
-                        collect($request->boolean('individual') ? $collection['data'] : $collection),
-                        $request->report_name ?: 'Incident Report', // ← default title
-                        $request->boolean('individual'),
-                        $request->boolean('individual') ? $collection['student'] : null
-                    ),
-                    "$filename.xlsx"
-                );
-        }
-    }
     public function generateAnalyticReport(Request $request) {
-        $from = $request->date_from;
-        $to = $request->date_to;
+        GenerateReportJob::dispatch(array_merge($request->all(), ['type' => 'analytics']), auth()->id());
 
+        return response()->json(['message' => 'queued']);
+    }
+
+    /**
+     * Lets the frontend warn "you already generated this" before queuing a
+     * new job, instead of the prefect only finding out after it finishes.
+     */
+    public function checkDuplicateReport(Request $request) {
+        $type = $request->type ?? 'incident';
+        $fileType = $request->file_type ?? 'pdf';
+
+        // Hash the raw filters (school_year, not a resolved date range) —
+        // must match how GenerateReportJob hashes at dispatch time.
+        $hash = Report::hashFilters($type, $fileType, $request->all());
+
+        $existing = Report::where('user_id', auth()->id())
+            ->where('filters_hash', $hash)
+            ->latest('created_at')
+            ->first();
+
+        if (!$existing) {
+            return response()->json(['exists' => false]);
+        }
+
+        return response()->json([
+            'exists' => true,
+            'report' => $existing,
+            'download_url' => route('prefect.report.download', ['fileName' => $existing->file_name]),
+            'view_url' => $existing->file_type === 'pdf' ? route('prefect.report.view', ['fileName' => $existing->file_name]) : null,
+        ]);
+    }
+
+    public function reportHistory() {
+        return Report::where('user_id', auth()->id())
+            ->latest('created_at')
+            ->get()
+            ->map(fn ($r) => array_merge($r->toArray(), [
+                'download_url' => route('prefect.report.download', ['fileName' => $r->file_name]),
+                'view_url' => $r->file_type === 'pdf' ? route('prefect.report.view', ['fileName' => $r->file_name]) : null,
+            ]));
+    }
+
+    public function destroyReport($id) {
+        $report = Report::where('user_id', auth()->id())->findOrFail($id);
+
+        $path = storage_path('app/private/generated-reports/' . auth()->id() . '/' . $report->file_name);
+        if (file_exists($path)) {
+            unlink($path);
+        }
+
+        $report->delete();
+
+        return response()->json(['message' => 'deleted']);
+    }
+
+    /**
+     * JSON preview of the analytics tab for the selected date range, so the
+     * on-screen charts/tables reflect the filter (previously only the PDF
+     * export honored date_from/date_to).
+     */
+    public function analyticsPreview(Request $request) {
+        return response()->json(
+            self::buildAnalyticsData($request->date_from, $request->date_to, false)
+        );
+    }
+
+    /**
+     * Shared by the analytics PDF job and analyticsPreview(). $withChartImage
+     * skips the quickchart.io round-trip for the on-screen preview, which
+     * renders its own chart client-side.
+     */
+    public static function buildAnalyticsData($from, $to, $withChartImage = true) {
         // === Top 5 Students ===
         $top5Students = ComplaintSubjectViolation::select(
                                             'student_id',
                                             DB::raw('COUNT(*) as total_offenses')
                                         )
-                                        ->with(['user.program']) 
+                                        ->with(['user.profile', 'user.program'])
                                         ->whereHas('complaint', function ($q) {
                                             $q->where('complaint_status', 'resolved');
                                         })
@@ -373,46 +268,44 @@ class ReportController extends Controller
                                         ->orderByRaw('COUNT(*) DESC')
                                         ->take(5)
                                         ->get();
-        #dd($top5Students->toArray());
 
         // === Violations Per Program ===
-$violationPerProgram = DB::query()
-    ->fromSub(function ($q) use ($from, $to) {
+        $violationPerProgram = DB::query()
+            ->fromSub(function ($q) use ($from, $to) {
 
-        // 🔹 Count violations PER STUDENT first
-        $q->from('complaint_subject AS cs')
-            ->join('complaint AS c', 'c.id', '=', 'cs.complaint_id')
-            ->join('complaint_subject_violation AS cso', function ($join) {
-                $join->on('cso.complaint_id', '=', 'cs.complaint_id')
-                     ->on('cso.student_id', '=', 'cs.student_id');
-            })
-            ->join('enrollment AS e', function ($join) {
-                $join->on('e.student_id', '=', 'cs.student_id')
-                    ->where('e.status', '=', 'enrolled');
-            })
-            ->join('program AS p', 'p.id', '=', 'e.program_id')
-            ->whereBetween('c.created_at', [$from, $to])
+                // 🔹 Count violations PER STUDENT first
+                $q->from('complaint_subject AS cs')
+                    ->join('complaint AS c', 'c.id', '=', 'cs.complaint_id')
+                    ->join('complaint_subject_violation AS cso', function ($join) {
+                        $join->on('cso.complaint_id', '=', 'cs.complaint_id')
+                             ->on('cso.student_id', '=', 'cs.student_id');
+                    })
+                    ->join('enrollment AS e', function ($join) {
+                        $join->on('e.student_id', '=', 'cs.student_id')
+                            ->where('e.status', '=', 'enrolled');
+                    })
+                    ->join('program AS p', 'p.id', '=', 'e.program_id')
+                    ->whereBetween('c.created_at', [$from, $to])
+                    ->select(
+                        'p.name AS program',
+                        'cs.student_id',
+                        DB::raw('COUNT(*) AS student_violations')
+                    )
+                    ->groupBy('p.name', 'cs.student_id');
+
+            }, 'student_counts')
             ->select(
-                'p.name AS program',
-                'cs.student_id',
-                DB::raw('COUNT(*) AS student_violations')
+                'program',
+
+                // ✅ unique students with violations
+                DB::raw('COUNT(student_id) AS students_with_violations'),
+
+                // ✅ total = SUM of each student's violations (NO DISTINCT)
+                DB::raw('SUM(student_violations) AS total_violations')
             )
-            ->groupBy('p.name', 'cs.student_id');
-
-    }, 'student_counts')
-    ->select(
-        'program',
-
-        // ✅ unique students with violations
-        DB::raw('COUNT(student_id) AS students_with_violations'),
-
-        // ✅ total = SUM of each student's violations (NO DISTINCT)
-        DB::raw('SUM(student_violations) AS total_violations')
-    )
-    ->groupBy('program')
-    ->orderByDesc('total_violations')
-    ->get();
-
+            ->groupBy('program')
+            ->orderByDesc('total_violations')
+            ->get();
 
         // === Summary Data ===
 
@@ -433,8 +326,25 @@ $violationPerProgram = DB::query()
             ->orderBy('month')
             ->get();
 
-        $labels = $incidentTrend->pluck('month')->map(fn($m) => \Carbon\Carbon::createFromFormat('!m', $m)->format('M'))->toArray();
+        $labels = $incidentTrend->pluck('month')->map(fn($m) => Carbon::createFromFormat('!m', $m)->format('M'))->toArray();
         $values = $incidentTrend->pluck('total')->toArray();
+
+        $data = [
+            'from' => $from,
+            'to' => $to,
+            'top5Students' => $top5Students,
+            'violationPerProgram' => $violationPerProgram,
+            'incidentTrend' => $incidentTrend,
+            'incidentTrendLabels' => $labels,
+            'incidentTrendValues' => $values,
+            'totalViolations' => $totalViolations,
+            'resolved' => $resolved,
+            'incidentCount' => $incidentCount,
+        ];
+
+        if (!$withChartImage) {
+            return $data;
+        }
 
         // Build chart config
         $chartConfig = [
@@ -463,24 +373,47 @@ $violationPerProgram = DB::query()
         // Fetch image as base64
         $chartResponse = Http::withOptions(['verify' => false])
                              ->get('https://quickchart.io/chart', ['c' => json_encode($chartConfig)]);
-        $chartBase64 = 'data:image/png;base64,' . base64_encode($chartResponse->body());
+        $data['chartBase64'] = 'data:image/png;base64,' . base64_encode($chartResponse->body());
 
-        $data = [
-            'from' => $from,
-            'to' => $to,
-            'top5Students' => $top5Students,
-            'violationPerProgram' => $violationPerProgram,
-            'incidentTrend' => $incidentTrend,
-            'totalViolations' => $totalViolations,
-            'resolved' => $resolved,
-            'incidentCount' => $incidentCount,
-            'chartBase64' => $chartBase64
-        ];
-        $pdf = Pdf::loadView("pdf.reports.analytic-report", $data);
-        $filePath = public_path('analytic-report.pdf');
+        return $data;
+    }
 
-        $pdf->save($filePath);
-        return response()->download($filePath)->deleteFileAfterSend(true);
+    /**
+     * Streams a report file generated by GenerateReportJob back to the
+     * requester. Files live under a per-user folder, so this doubles as the
+     * authorization check.
+     */
+    public function downloadReport($fileName) {
+        $fileName = basename($fileName);
+        $path = storage_path('app/private/generated-reports/' . auth()->id() . "/$fileName");
+
+        if (!file_exists($path)) {
+            abort(404);
+        }
+
+        // No deleteFileAfterSend — the report is kept on disk so it stays
+        // downloadable/viewable from the Generated Reports history until
+        // the prefect explicitly deletes it (destroyReport()).
+        return response()->download($path, $fileName, [
+            'Content-Type' => mime_content_type($path),
+        ]);
+    }
+
+    /**
+     * Inline preview (no Content-Disposition: attachment) — PDFs only, the
+     * frontend doesn't offer this for Excel since browsers can't render it.
+     */
+    public function viewReport($fileName) {
+        $fileName = basename($fileName);
+        $path = storage_path('app/private/generated-reports/' . auth()->id() . "/$fileName");
+
+        if (!file_exists($path)) {
+            abort(404);
+        }
+
+        return response()->file($path, [
+            'Content-Type' => mime_content_type($path),
+        ]);
     }
     public function actionLogStore(Request $request) {
         $query = ActionLog::with('user.profile');
@@ -600,7 +533,7 @@ $violationPerProgram = DB::query()
         Report::where('id', $request->id)->update([]);
         return response()->json(self::getAllReport());
     }
-    public function getAllReport($type = 'incident')
+    public static function getAllReport($type = 'incident')
     {
         $data = ($type == 'incident')
                 ? new ComplaintSubject()
@@ -640,7 +573,7 @@ $violationPerProgram = DB::query()
             $query->whereDate('created_at', request('date'));
         }
 
-        return $query->paginate(100);
+        return ActionLogResource::collection($query->paginate(100));
     }
     public function getReportField($request) {
         return [

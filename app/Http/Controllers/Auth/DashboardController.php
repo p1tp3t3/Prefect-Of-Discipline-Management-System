@@ -10,10 +10,12 @@ use App\Models\Complaint;
 use App\Models\Enrollment;
 use App\Models\FamilyMember;
 use App\Models\GatePass;
+use App\Models\Penalty;
 use App\Models\Program;
 use App\Models\Referral;
 use App\Models\Student;
 use App\Models\TeachingStaff;
+use App\Models\Violation;
 use Inertia\Inertia;
 use App\Models\User;
 use Carbon\Carbon;
@@ -249,6 +251,8 @@ class DashboardController extends Controller
             'complaint_piechart' => $complaintPieChart,
             'program' => Program::select(['name', 'color_code'])->get()->toArray(),
             'bargraph' => self::getPrefectBarGraph(),
+            'offense_list' => Violation::with(['penalties.penalty'])->latest('created_at')->get(),
+            'penalty_list' => Penalty::latest('created_at')->get(),
             'countLastMonthUnresolvedComplaint' => $countUnresolvedComplaints->count(),
             'label' => self::getDynamicComplaintLabel($countUnresolvedComplaints
                                                       ->orderBy('created_at', 'asc')

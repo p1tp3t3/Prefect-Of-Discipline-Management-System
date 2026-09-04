@@ -1,9 +1,10 @@
 import ActionBtn from "@/Components/button/action-btn"
-import TabBtn from "@/Components/button/tab-btn"
+import TabSwitcher from "@/Components/other/tab-switcher"
 import NotificationList from "@/Components/list/notification-list"
 import NotifDisplayLayout from "@/Layouts/notif-display-layout"
-import { APIRequest } from "@/others/classes/api-req"
+import { NotificationService } from "@/others/services/notification-service"
 import { useState } from "react"
+import { X, Check, Trash2 } from "lucide-react"
 
 const Notification = (props) => {
 
@@ -13,25 +14,21 @@ const Notification = (props) => {
           [size, setSize] = useState(props.size)
 
     const tab = [
-        { val: 'all', label: 'All' },
-        { val: 'unread', label: 'Unread' },
+        { key: 'all', label: 'All' },
+        { key: 'unread', label: 'Unread' },
     ]
     const handleSelect = (type) => {
         if(choose != type) {
             setNotifList(null)
             setChoose(type)
-            const api = new APIRequest(`/api/notification/list/${type}/${props.user.id}/10`, 'get', {}, (e) =>  setNotifList(e.notif))
-
-            api.fetchData()
+            NotificationService.list(type, props.user.id, 10, (e) => setNotifList(e.notif))
         }
     }
     const deleteNotif = (e) => {
         const checkboxes = document.querySelectorAll('input[name="selected-row"]:checked')
         const ids = Array.from(checkboxes).map((checkbox) => checkbox.value)
-        const data = { notif_id_list: ids }
-        
-        const api = new APIRequest(`/notifications/delete/select-multiple`, 'post', data, setNotifList)
-        api.fetchData()
+
+        NotificationService.deleteSelected(ids, setNotifList)
 
         checkboxes.forEach((checkbox) => {
             checkbox.checked = false
@@ -45,11 +42,10 @@ const Notification = (props) => {
         })
     }
     const handlePaginate = () => {
-        const api = new APIRequest(`/api/notification/list/${choose}/${props.user.id}/${notif_list.length + 10}`,'get', {}, (e) => {
+        NotificationService.list(choose, props.user.id, notif_list.length + 10, (e) => {
             setNotifList(e.notif)
             setSize(e.size)
         })
-        api.fetchData()
     }
 
     return (
@@ -61,19 +57,14 @@ const Notification = (props) => {
                     <div>
                         <div className="py-5 flex justify-between items-center">
                             <div>
-                                <TabBtn
-                                    list={tab}
-                                    option={choose}
-                                    handleSelect={handleSelect}
-                                    className='h-[2.2rem]'
-                                />
+                                <TabSwitcher tabs={tab} value={choose} onChange={handleSelect} />
                             </div>
                             <div className="flex items-center gap-2">
                                 <ActionBtn
                                     className="bg-blue-700 hover:bg-blue-800"
                                     onClick={() => enableSelect(!select)}
                                 >
-                                    <i className={`fa-solid ${select ? 'fa-xmark' : 'fa-check'}`}></i>
+                                    {select ? <X size={14} /> : <Check size={14} />}
                                 </ActionBtn>
                                 {select &&
                                 <div className="flex items-center">
@@ -83,7 +74,7 @@ const Notification = (props) => {
                                             <label htmlFor="select-all">Select All</label>
                                         </div>
                                         <ActionBtn className="bg-red-700 hover:bg-red-800"b onClick={deleteNotif}>
-                                            <i className="fa-solid fa-trash"></i>
+                                            <Trash2 size={14} />
                                         </ActionBtn>
                                     </div>
                                 </div>}
@@ -98,12 +89,7 @@ const Notification = (props) => {
                                     select={select}
                                     handlePaginate={handlePaginate}
                                     size={size}
-                                    deleteNotif={(i) => {
-                                        const api = new APIRequest(`/notifications/delete/select-one`, 'post', {
-                                            id: i
-                                        }, setNotifList)
-                                        api.fetchData()
-                                    }}
+                                    deleteNotif={(i) => NotificationService.deleteOne(i, setNotifList)}
                                 />
                             </div>
                         </div>

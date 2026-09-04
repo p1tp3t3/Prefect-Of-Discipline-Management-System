@@ -3,11 +3,15 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class ViolationPenalty extends Model
 {
-    public $fillable = ['violation_id', 'occurence', 'penalty_id'],
+    use HasFactory;
+
+    public $fillable = ['violation_id', 'occurrence', 'penalty_id'],
            $table = 'violation_penalty';
+    public $timestamps = false;
 
     public function violation() {
         return $this->belongsTo(Violation::class, 'violation_id', 'id');

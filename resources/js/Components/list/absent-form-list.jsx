@@ -1,5 +1,6 @@
 import AuthContext from "@/context-provider/auth-provider"
 import { useContext } from "react"
+import { Table, TableHead, TableBody, TableRow, TableCell, TableContainer } from "@mui/material"
 
 
 const AbsentFormList = (props) => {
@@ -7,17 +8,20 @@ const AbsentFormList = (props) => {
 
     return (
         <div className={props.style && "w-full px-5 py-3 bg-white rounded-md shadow-black/20 shadow-sm"}>
-            <table className="w-full border-collapse">
-                <thead className="border-b-[1px] border-gray-400">
-                    <th className="py-3">#</th>
-                    <th className="py-3">ID No.</th>
-                    {(usr.user_type == 'prefect') &&
-                    <th className="py-3">Student</th>}
-                    <th className="py-3">Requested Since</th>
-                    <th className="py-3">Approved Since</th>
-                    <th className="py-3">Action</th>
-                </thead>
-                <tbody>
+            <TableContainer sx={{ minWidth: "600px" }}>
+            <Table sx={{ width: "100%" }}>
+                <TableHead sx={{ "& .MuiTableCell-root": { borderBottom: "1px solid #9ca3af" } }}>
+                    <TableRow>
+                        <TableCell>#</TableCell>
+                        <TableCell>ID No.</TableCell>
+                        {(usr.user_type == 'prefect') &&
+                        <TableCell>Student</TableCell>}
+                        <TableCell>Requested Since</TableCell>
+                        <TableCell>Approved Since</TableCell>
+                        <TableCell>Action</TableCell>
+                    </TableRow>
+                </TableHead>
+                <TableBody>
                     <Row type={usr.user_type} />
                     <Row type={usr.user_type} />
                     <Row type={usr.user_type} />
@@ -25,22 +29,23 @@ const AbsentFormList = (props) => {
                     <Row type={usr.user_type} />
                     <Row type={usr.user_type} />
                     <Row type={usr.user_type} />
-                </tbody>
-            </table>
+                </TableBody>
+            </Table>
+            </TableContainer>
         </div>
     )
 }
 const Row = ({ type, data }) => {
     return (
-        <tr>
-            <td className="py-2">text</td>
-            <td className="py-2">text</td>
+        <TableRow>
+            <TableCell>text</TableCell>
+            <TableCell>text</TableCell>
             {(type == 'prefect') &&
-            <td className="py-2">Student Name</td>}
-            <td className="py-2">text</td>
-            <td className="py-2">text</td>
-            <td className="py-2">text</td>
-        </tr>
+            <TableCell>Student Name</TableCell>}
+            <TableCell>text</TableCell>
+            <TableCell>text</TableCell>
+            <TableCell>text</TableCell>
+        </TableRow>
     )
 }
 export default AbsentFormList

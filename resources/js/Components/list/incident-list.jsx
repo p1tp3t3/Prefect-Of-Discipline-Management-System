@@ -1,5 +1,6 @@
 import { readableDate, readableTime, toTitleCase } from "@/others/function";
-import CircleReload from "../reload/circle-reload";
+import ListSkeleton from "../reload/list-skeleton";
+import { TriangleAlert } from "lucide-react";
 
 const IncidentList = ({ list = null, isIncident }) => {
     return (
@@ -13,7 +14,7 @@ const IncidentList = ({ list = null, isIncident }) => {
                     ) : (
                         <div className="w-full h-[20rem] grid place-items-center">
                             <div className="text-center text-gray-500 py-10">
-                                <i className="fa-solid fa-triangle-exclamation text-[2.5em] mb-2"></i>
+                                <TriangleAlert size="2.5em" className="mb-2" />
                                 <h1 className="text-[1.2em] font-semibold">
                                     No {isIncident ? "Incidents" : "Violations"} Found
                                 </h1>
@@ -26,7 +27,7 @@ const IncidentList = ({ list = null, isIncident }) => {
                     )
                 ) : (
                     <div className="w-full h-[20rem] grid place-items-center">
-                        <CircleReload size={4} />
+                        <ListSkeleton rows={4} />
                     </div>
                 )}
             </div>

@@ -13,6 +13,9 @@ use App\Models\Program;
 use App\Models\Referral;
 use App\Models\TeachingStaff;
 use App\Models\UserPermission;
+use App\Http\Controllers\Resource\FileController;
+use App\Http\Resources\TeachingStaffResource;
+use App\Http\Resources\UserResource;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
@@ -34,8 +37,9 @@ class AccountController extends Controller
 
         return Inertia::render('itrc/accounts',
             array_merge($account->allUserAccount(), [
-                'program_name' => self::isProgramHead(),
-                'program' => Program::all(['id', 'name'])
+                'program_name' => is_program_head(),
+                'program' => Program::all(['id', 'name']),
+                'account_files' => FileController::scopedAccountFiles(),
             ]));
     }
 
@@ -89,17 +93,40 @@ class AccountController extends Controller
                  ? array_merge([
                     'user' => auth()->user(),
                     'faculty' => self::getFaculty(),
-                    'program_name' => self::isProgramHead(),
+                    'program_name' => is_program_head(),
                     'file_name' => "faculty-account-{$programHead->program_id}-{$programHead->program->name}.csv",
                 ])
                  : [
                     'user' => auth()->user(),
                     'faculty' => self::getFaculty(),
-                    'program_name' => self::isProgramHead(),
+                    'program_name' => is_program_head(),
                     'program' => Program::all(['id', 'name']),
                  ];
 
         return Inertia::render("$isPrefect/faculty", $props);
+    }
+
+    /**
+     * Program heads only: students, faculty, and their default account
+     * files, all scoped to their own program.
+     */
+    public function programAccountFilesIndex() {
+        $programHead = TeachingStaff::with('program')
+                            ->where('user_id', auth()->user()->id)
+                            ->where('position', 'program_head')
+                            ->first();
+
+        if (!$programHead) {
+            abort(403);
+        }
+
+        return Inertia::render('other/program-account-files', [
+            'user' => auth()->user(),
+            'program_name' => $programHead->program->name,
+            'students' => ['data' => self::getStudent()],
+            'faculty' => self::getFaculty(),
+            'account_files' => FileController::scopedAccountFiles(),
+        ]);
     }
 
     public function childrenListIndex() {
@@ -107,10 +134,10 @@ class AccountController extends Controller
 
         return Inertia::render('parent/children-monitoring', [
             'user' => auth()->user(),
-            'children' => User::with('profile')
+            'children' => UserResource::collection(User::with('profile')
                             ->whereIn('id', FamilyMember::where('family_id', $familyId)->pluck('member_id'))
                             ->where('role', 'student')
-                            ->get()
+                            ->get())
             ]);
     }
 
@@ -123,20 +150,30 @@ class AccountController extends Controller
     public function accountSettingsIndex($id) {
         $props = [
             'user' => auth()->user(),
-            'program_name' => self::isProgramHead(),
-            'otherUserAccount' => User::with('profile')->where('username', $id)->first()
+            'program_name' => is_program_head(),
+            'otherUserAccount' => new UserResource(User::with('profile')->where('username', $id)->first())
         ];
 
         return Inertia::render('itrc/account-settings', $props);
     }
 
-    public function update(Request $request)
+    public function update(\App\Http\Requests\Account\UpdateAccountRequest $request)
     {
         // This endpoint only ever updates the authenticated user's own account —
         // never trust an id from the request for the target row (that was the
         // account-takeover bug: a client-supplied user_id let anyone overwrite
         // anyone else's credentials).
         $user = auth()->user();
+
+        // During forced first-login setup, the password is saved together
+        // with the profile by AccountSetupController::complete() — this
+        // endpoint must not persist a password change on its own until that
+        // combined step happens, even if hit directly.
+        if (session('force_account_setup')) {
+            return response()->json([
+                'error' => 'Complete account setup (profile and password together) before changing your password here.',
+            ], 422);
+        }
 
         // Only touch the fields actually present in this request — a
         // password-only submission (or a username/email-only one) must not
@@ -168,6 +205,10 @@ class AccountController extends Controller
 
             // Add new password to update array
             $fields['password'] = Hash::make($request->password);
+
+            if (!$user->already_update_password) {
+                $fields['already_update_password'] = true;
+            }
         }
 
         // ============================================================
@@ -626,15 +667,15 @@ class AccountController extends Controller
                             ]);
             }
 
-            return $data;
+            return UserResource::collection($data);
         } else {
             $programId = $myTeachingStaff?->program_id;
 
             self::setId($programId);
 
-            return TeachingStaff::with(['program', 'user.profile'])
+            return TeachingStaffResource::collection(TeachingStaff::with(['program', 'user.profile'])
                           ->where('program_id', self::getId())
-                          ->paginate(10);
+                          ->paginate(10));
         }
     }
     public function getStudent() {
@@ -683,7 +724,7 @@ class AccountController extends Controller
                             ->get();
             }
 
-            return $data;
+            return UserResource::collection($data);
         } else {
             $programId = $myTeachingStaff?->program_id;
 
@@ -705,7 +746,7 @@ class AccountController extends Controller
                 });
             }
 
-            return $data->get();
+            return UserResource::collection($data->get());
         }
     }
 
@@ -846,9 +887,9 @@ class AccountController extends Controller
         return $data;
     }
     public function getStudentParent() {
-        return User::whereIn('role', ['student', 'parent'])
+        return UserResource::collection(User::whereIn('role', ['student', 'parent'])
                     ->with(['program', 'parent'])
-                    ->get();
+                    ->get());
     }
     public function searchAllUsers(Request $request, string $type) {
         $search = trim($request->query('search', ''));
@@ -900,7 +941,7 @@ class AccountController extends Controller
             });
         }
 
-        return response()->json(
+        return UserResource::collection(
             $query->latest('users.created_at')->limit(10)->get()
         );
     }
@@ -915,45 +956,6 @@ class AccountController extends Controller
             'allow_appointment' => $request->allow_appointment,
             'allow_gatepass' => $request->allow_gatepass,
         ];
-    }
-    public function getUserAccessField($data = null, $type) {
-        switch($type) {
-            case 'student':
-                return array_merge($data, [
-                    'allow_complaint' => 1,
-                    'allow_absent_form' => 1,
-                    'allow_appointment' => 1,
-                    'allow_gatepass' => 1,
-                ]);
-            case 'super_admin':
-                return array_merge($data, [
-                    'allow_complaint' => 1,
-                    'allow_gatepass' => 1,
-                ]);
-            case 'non_teaching_staff':
-                return array_merge($data, [
-                    'allow_complaint' => 1,
-                    'allow_gatepass' => 1,
-                ]);
-            case 'teaching_staff':
-                return array_merge($data, [
-                    'allow_complaint' => 1,
-                    'allow_gatepass' => 1,
-                ]);
-            case 'parent':
-                return array_merge($data, [
-                    'allow_complaint' => 1,
-                    'allow_appointment' => 1,
-                ]);
-            default:
-                return array_merge($data, [
-                    'allow_complaint' => 1,
-                    'allow_referral' => 1,
-                    'allow_absent_form' => 1,
-                    'allow_appointment' => 1,
-                    'allow_gatepass' => 1,
-                ]);
-        }
     }
     public function validateUser($type, $value, $id = null) {
         $authUserId = auth()->check()
@@ -991,11 +993,4 @@ class AccountController extends Controller
         return response()->json($exists);
     }
 
-    public function isProgramHead() {
-        $admin = TeachingStaff::with('program')
-                            ->where('user_id', auth()->user()->id)
-                            ->where('position', 'program_head')
-                            ->first();
-        return $admin?->program?->name;
-    }
 }

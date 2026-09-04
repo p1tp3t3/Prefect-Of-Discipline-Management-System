@@ -1,15 +1,16 @@
 import React, { useState, useContext } from "react"
 import ProfileSectionWrapper from "@/wrapper/profile-section-wrapper"
-import { change, check, checkActiveStatus, getProfilePic, getYearLevel, readableDate, replaceUnderScoreToSpace, toTitleCase } from "@/others/function"
+import { change, check, checkActiveStatus, getProfilePic, getProgramLogo, getYearLevel, readableDate, replaceUnderScoreToSpace, toTitleCase } from "@/others/function"
 import SelectedUser from "@/Components/other/selected-user"
 import FormTextfield from "@/Components/input/form-input"
 import FormButton from "@/Components/button/button"
-import { APIRequest } from "@/others/classes/api-req"
+import { AccountService } from "@/others/services/account-service"
 import AuthContext from "@/context-provider/auth-provider"
 import { Link } from "@inertiajs/react"
 import CheckBoxButton from "@/Components/input/checkbox"
 import { requestType } from "@/others/list/type-list"
 import DropdownField from "@/Components/input/dropdown"
+import { User, Home, Users, GraduationCap } from "lucide-react"
 
 const About = (props) => {
     const [editEducationBackground, enableEditEducationBackground] = useState('label'),
@@ -63,8 +64,7 @@ const About = (props) => {
         }
         setLoading(true)
         setBtnLabel('please wait')
-        const api = new APIRequest('/super-admin/account/update', 'post', data, ()=>{}, success, error)
-        api.sendPostData()
+        AccountService.updateUserInfo(data, success, error)
     }
     const success = () => {
         setLoading(false)
@@ -92,7 +92,7 @@ const About = (props) => {
                   (props.user.role == 'sub_admin' && props.data.user_id != props.user.id && props.data.user_type == 'student')) &&
                 <ProfileSectionWrapper
                     title='Accessibility'
-                    icon='fa-solid fa-user'
+                    icon={User}
                 >
                     <form onSubmit={handleSubmit}>
                         <div className="text-[0.9em]">
@@ -112,7 +112,7 @@ const About = (props) => {
                         </div>
                     </form>
                 </ProfileSectionWrapper>}
-                <ProfileSectionWrapper title="Personal Information" icon="fa-solid fa-user">
+                <ProfileSectionWrapper title="Personal Information" icon={User}>
                     <div className="">
                         <Label 
                             title="Username" 
@@ -139,10 +139,17 @@ const About = (props) => {
                             desc={`${replaceUnderScoreToSpace(props.data.user_type.toUpperCase())}`} 
                         />
                         {(props.data.user_type === 'teaching_staff' && props.data.unique_att?.program != null) && (
-                            <Label
-                                title="Program"
-                                desc={`${props.data.unique_att.program.description ?? props.data.unique_att.program.name}`}
-                            />
+                            <div className="border-b border-gray-200 py-3 last:border-b-0">
+                                <div className="font-semibold text-gray-700">Program:</div>
+                                <div className="text-gray-900 mt-1 flex items-center gap-2">
+                                    <img
+                                        src={getProgramLogo(props.data.unique_att.program.logo)}
+                                        alt=""
+                                        className="w-6 h-6 rounded-full object-cover"
+                                    />
+                                    <div>{props.data.unique_att.program.description ?? props.data.unique_att.program.name}</div>
+                                </div>
+                            </div>
                         )}
                         {(props.data.user_type === 'student' && props.data.unique_att?.enrollments?.length > 0) && (
                             <>
@@ -172,7 +179,7 @@ const About = (props) => {
                         /></>}
                     </div>
                 </ProfileSectionWrapper>
-                <ProfileSectionWrapper title="Contact Information" icon="fa-solid fa-house">
+                <ProfileSectionWrapper title="Contact Information" icon={Home}>
                     <div className="">
                         {!['super_admin', 'sub_admin'].includes(props.data.user_type) &&
                         <div className="grid gap-3">
@@ -200,7 +207,7 @@ const About = (props) => {
                     <>
                         <ProfileSectionWrapper 
                             title={`Family Background ${props.family.family_code != null ? `(${props.family.family_code})` : ''}`}
-                            icon="fa-solid fa-users"
+                            icon={Users}
                             side={
                                 shouldShowFamilyButton() ? (
                                     <button 
@@ -233,7 +240,7 @@ const About = (props) => {
                         {props.data.user_type === 'student' && (
                             <ProfileSectionWrapper 
                                 title="Educational Background" 
-                                icon="fa-solid fa-user-graduate"
+                                icon={GraduationCap}
                             >
                                 <EducationBackgroundSection 
                                     type={'label'}

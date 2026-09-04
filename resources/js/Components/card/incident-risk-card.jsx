@@ -1,7 +1,8 @@
-import { APIRequest } from "@/others/classes/api-req";
+import { RiskPredictionService } from "@/others/services/risk-prediction-service";
 import { Link } from "@inertiajs/react";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { CheckCircle2, Lightbulb, AlertTriangle, Skull, Loader2 } from "lucide-react";
 
 /**
  * Student-Friendly Behavioral Risk Card
@@ -14,16 +15,10 @@ const IncidentRiskCard = ({ user_id }) => {
   const [repeatRiskChance, setRepeatRiskChance] = useState(0);
 
   useEffect(() => {
-    const api = new APIRequest(
-      `/api/student/incident/list/${user_id}`,
-      "get",
-      {},
-      (res) => {
-        setData(res);
-        evaluateRisk(res);
-      }
-    );
-    api.fetchData();
+    RiskPredictionService.getStudentIncidentList(user_id, (res) => {
+      setData(res);
+      evaluateRisk(res);
+    });
   }, [user_id]);
 
   const evaluateRisk = (res) => {
@@ -52,41 +47,42 @@ const IncidentRiskCard = ({ user_id }) => {
   const studentMessages = {
     low: {
       color: "bg-[#32a852]",
-      icon: "fa-circle-check",
+      icon: CheckCircle2,
       title: "Great Job! Keep It Up",
       message:
         "Your behavior record looks good! Continue practicing positive actions and staying responsible.",
     },
     moderate: {
       color: "bg-[#e6a800]",
-      icon: "fa-lightbulb",
+      icon: Lightbulb,
       title: "Reminder to Stay Focused",
       message:
         "A few reminders were noted. Stay mindful of your actions and continue making responsible choices.",
     },
     high: {
       color: "bg-[#e67e22]",
-      icon: "fa-warning",
+      icon: AlertTriangle,
       title: "Needs Improvement",
       message:
         "Several concerns were recorded. It's important to reflect and show consistent improvement.",
     },
     critical: {
       color: "bg-[#e12b2b]",
-      icon: "fa-skull-crossbones",
+      icon: Skull,
       title: "Immediate Attention Needed",
       message:
         "Your behavior requires urgent attention. Please reach out to your Prefect or Guidance Office.",
     },
     none: {
       color: "bg-[#32a852]",
-      icon: "fa-check-circle",
+      icon: CheckCircle2,
       title: "Excellent Behavior",
       message: "No behavioral concerns found. Keep up the great work!",
     },
     loading: {
       color: "bg-gray-400",
-      icon: "fa-spinner fa-spin",
+      icon: Loader2,
+      spin: true,
       title: "Loading...",
       message: "Fetching your behavior summary...",
     },
@@ -199,7 +195,7 @@ const IncidentRiskCard = ({ user_id }) => {
             <div
               className={`flex-shrink-0 w-14 h-14 flex items-center justify-center text-white text-2xl shadow-md ${risk.color} rounded-xl`}
             >
-              <i className={`fa-solid ${risk.icon}`}></i>
+              <risk.icon size={24} className={risk.spin ? "animate-spin" : ""} />
             </div>
 
             <div className="flex-1">

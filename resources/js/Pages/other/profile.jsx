@@ -1,16 +1,19 @@
 import ProfilePic from "@/Components/other/profile-pic";
 import React, { useEffect, useState, useContext } from "react";
 import { Link, useForm } from "@inertiajs/react";
-import { splitStr, showOutputModal, change, getProfilePic, checkActiveStatus, readableActiveDuration, showWarningModal } from "@/others/function";
+import { splitStr, showOutputModal, change, getProfilePic, checkActiveStatus, readableActiveDuration, showWarningModal, canViewEnrollmentHistory } from "@/others/function";
 import AuthContext from "@/context-provider/auth-provider";
 import EditProfileModal from "@/Components/modal/submission-form/edit-profile-modal";
-import Reload from "@/Components/reload/reload";
+import { useReload } from "@/context-provider/reload-provider";
+import { ProfileService } from "@/others/services/profile-service";
 import About from "./profile/about";
 import Incident from "./profile/incident";
+import EnrollmentHistory from "./profile/enrollment-history";
 import RegisterFamilyModal from "@/Components/modal/submission-form/register-family-modal";
-import { APIRequest } from "@/others/classes/api-req";
 import AuthLayout from "@/Layouts/auth-layout";
+import TabSwitcher from "@/Components/other/tab-switcher";
 import { motion } from "framer-motion";
+import { User as UserIcon, ShieldAlert, GraduationCap } from "lucide-react";
 
 const calculateAge = (dateOfBirth) => {
     if (!dateOfBirth) return null;
@@ -94,21 +97,13 @@ const Profile = (props) => {
     
     const { data, setData, post, processing, errors } = useForm(profileData);
     const [close, closeEditProfile] = useState(false),
-          [reload, setReload] = useState(false),
-          [reloadType, setReloadType] = useState(""),
-          [reloadLabel, setReloadLabel] = useState(""),
           [clickedOk, setClickOk] = useState(false);
 
     const acc = props.user,
           user = props.otherUserProfile,
           profilePic = getProfilePic(user.profile?.profile_picture, user.profile?.sex);
 
-    const isReload = () => reload ? "opacity-1 z-50" : "opacity-0 z-[-1]";
-    const loadRegister = (r, t, l) => {
-        setReload(r);
-        setReloadType(t);
-        setReloadLabel(l);
-    };
+    const { loadRegister } = useReload();
     const handleChange = (e) => change(e, setData);
     const handleProfileChange = (e) => setData(prev => ({ ...prev, profile_picture: e }));
     
@@ -138,13 +133,19 @@ const Profile = (props) => {
                     />
                 );
             case "incidents":
-                return <Incident data={props.otherUserProfile} />;
+                return (
+                    <Incident
+                        data={props.otherUserProfile}
+                        incidentGroups={props.incident_groups}
+                        violationOccurrences={props.violation_occurrences}
+                    />
+                );
+            case "enrollment_history":
+                return <EnrollmentHistory enrollments={props.otherUserProfile.enrollments ?? []} />;
             default:
                 return <About data={profileData} data2={data} setData={setData} />;
         }
     };
-
-    const listStyle = "transition-all cursor-pointer rounded-md py-3 px-5 hover:bg-black/20";
 
     const canEditProfile = () => {
         // Admin can edit all profiles
@@ -167,6 +168,14 @@ const Profile = (props) => {
 
     const isAllowToEdit = () => user.id != acc.id;
 
+    const showEnrollmentHistoryTab = canViewEnrollmentHistory(props.user) && props.otherUserProfile.role === 'student';
+
+    const tabOptions = [
+        { key: 'about', label: 'About', icon: UserIcon },
+        { key: 'incidents', label: 'Incidents and Violations', icon: ShieldAlert },
+        ...(showEnrollmentHistoryTab ? [{ key: 'enrollment_history', label: 'Enrollment History', icon: GraduationCap }] : []),
+    ];
+
     const updateProfile = (data) => {
         showWarningModal(
             `Are You Sure You Want To Update ${(isAllowToEdit() ? `${profileData.first_name}'s` : 'Your')} Profile Information?`,
@@ -174,8 +183,7 @@ const Profile = (props) => {
             'Cancel',
             () => {
                 loadRegister(true, "text-wait", `${(isAllowToEdit() ? `${profileData.first_name}'s` : 'Your')} Profile Information Is Updating`);
-                const api = new APIRequest(`/profile/${user.username}/edit`, 'post', data, ()=>{}, success, error);
-                api.sendPostData();
+                ProfileService.updateProfile(user.username, data, success, error);
             }
         );
     };
@@ -203,12 +211,6 @@ const Profile = (props) => {
 
     return (
         <>
-            <Reload
-                transition={isReload()}
-                type={reloadType}
-                label={reloadLabel}
-            />
-
             {(canEditProfile() && user.role != 'student') &&
             <EditProfileModal
                 profilePic={profilePic}
@@ -270,27 +272,13 @@ const Profile = (props) => {
 
 
                         {/* ✅ Responsive tabs */}
-        {((props.user.role == "sub_admin" && props.otherUserProfile.role == 'student') ||
+        {((props.user.role == "super_admin" && props.otherUserProfile.role == 'student') ||
+                          (props.user.role == "sub_admin" && props.otherUserProfile.role == 'student') ||
                           ((props.user.role == "parent" && props.otherUserProfile.role == 'student')) ||
                           (props.user.role == "teaching_staff" && props.otherUserProfile.role == 'student')  ||
                           (props.user.role == 'student' && props.otherUserProfile.role != 'parent')) && (
-                            <div className="w-full">
-                                <div className="bg-white shadow-black/20 shadow-md border-t border-gray-300 py-2 px-4 sm:px-6 md:px-10 overflow-x-auto">
-                                    <ul className="flex flex-nowrap text-[0.9em]">
-                                        <li 
-                                            className={`${listStyle} ${(tab == 'about') ? 'bg-black/20' : ''}`} 
-                                            onClick={() => setTab('about')}
-                                        >
-                                            <b>About</b>
-                                        </li>
-                                        <li 
-                                            className={`${listStyle} ${(tab == 'incidents') ? 'bg-black/20' : ''}`} 
-                                            onClick={() => setTab('incidents')}
-                                        >
-                                            <b>Incidents and Violations</b>
-                                        </li>
-                                    </ul>
-                                </div>
+                            <div className="w-full bg-white shadow-black/20 shadow-md border-t border-gray-300 px-4 sm:px-6 md:px-10">
+                                <TabSwitcher tabs={tabOptions} value={tab} onChange={setTab} />
                             </div>
                         )}
                     </div>

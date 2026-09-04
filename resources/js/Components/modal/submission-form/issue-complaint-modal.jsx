@@ -6,10 +6,11 @@ import { useState, useEffect } from "react"
 import SearchUserBar from "@/Components/input/search-user-bar"
 import SelectedUser from "../../other/selected-user"
 import DropdownField from "../../input/dropdown"
-import { APIRequest } from "@/others/classes/api-req"
+import { ComplaintService } from "@/others/services/complaint-service"
 import { clearField, showOutputModal, getProfilePic, showWarningModal, toTitleCase } from "@/others/function"
 import PicVidUpload from "@/Components/input/pic-vid-upload"
 import ProfilePic from "@/Components/other/profile-pic"
+import { X } from "lucide-react"
 
 const IssueComplaintModal = (props) => {
     const [search, setSearch] = useState(""),
@@ -92,8 +93,7 @@ const IssueComplaintModal = (props) => {
                 () => {
                     clearField(setValidationError)
                     props.reload(true, "text-wait", "Your Complaint is Processing");
-                    const api = new APIRequest('/complaint/create', 'post', f, ()=>{}, success, error)
-                    api.sendPostData()
+                    ComplaintService.create(f, success, error)
                 }
             )
         }else {
@@ -429,7 +429,7 @@ const SelectedUser2 = (props) => {
                                 className="bg-gray-300 relative top-[-0.3rem] z-[5] w-[1.2rem] h-[1.2rem] rounded-full text-[0.8em]"
                                 onClick={() => props.unselect(props.index)}
                             >
-                                <i className="fa-solid fa-xmark"></i>
+                                <X size={12} />
                             </button>
                         </div>}
                         <div className="justify-self-center">

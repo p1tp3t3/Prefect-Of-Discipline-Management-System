@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Models\ActionLog;
-use App\Models\WebPushSubscription;
 use Illuminate\Container\Attributes\Cache;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -35,14 +34,12 @@ class AuthenticatedSessionController extends Controller
     }
 
     /**
-     * The bcrypt hash guarding /super-admin/login/{password}. Super admins can
-     * change this from System Settings; falls back to the .env-configured
-     * value until they do.
+     * The bcrypt hash guarding /super-admin/login/{password}. Super admins
+     * can change this from System Settings, which writes it into .env.
      */
     private static function maintenanceLoginSecret()
     {
-        return \Illuminate\Support\Facades\Cache::get('maintenance_login_secret')
-            ?? config('app.maintenance_login_secret');
+        return config('app.maintenance_login_secret');
     }
 
     /**
@@ -113,6 +110,20 @@ class AuthenticatedSessionController extends Controller
         if ($user->activate) {
             $intended = $request->session()->pull('url.intended');
             $request->session()->regenerate();
+
+            // Accounts created via bulk/manual registration start with a
+            // default profile and password — these roles must complete both
+            // before using the rest of the app. Driven off a session flag
+            // (checked by ForceAccountSetup), not re-derived on every request.
+            $forcedRoles = ['student', 'teaching_staff', 'non_teaching_staff', 'guard', 'guidance'];
+            if (in_array($user->role, $forcedRoles, true) && (!$user->already_update_profile || !$user->already_update_password)) {
+                $request->session()->put('force_account_setup', true);
+
+                if (!$user->hasVerifiedEmail()) {
+                    $user->sendEmailVerificationNotification();
+                }
+            }
+
             ActionLog::create([
                 'user_id' =>  $user->id,
                 'action_type' => 'login',
@@ -137,7 +148,7 @@ class AuthenticatedSessionController extends Controller
         if ($user && $endpoint) {
 
             // Delete WebPush subscription ONLY for this browser
-            WebPushSubscription::where('endpoint', $endpoint)->delete();
+            $user->deletePushSubscription($endpoint);
 
             // Remove session key
             session()->forget('webpush_endpoint');

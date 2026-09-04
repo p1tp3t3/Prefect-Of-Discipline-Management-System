@@ -1,24 +1,28 @@
 import LogInForm from "@/Components/log-in-form";
 import { Head } from "@inertiajs/react";
 import { useRoute } from "ziggy-js";
-import Reload from "@/Components/reload/reload";
 import "./style.css";
 import { useState } from "react";
-import GuestLayout from "@/Layouts/guest-layout";
 import axios from "axios";
 import { showOutputModal } from "@/others/function";
 import background from '@/images/bg-pilar2.jpg'
+import { ReloadProvider, useReload } from "@/context-provider/reload-provider";
 
+const LogIn = () => (
+    <ReloadProvider>
+        <LogInInner />
+    </ReloadProvider>
+);
 
-const LogIn = () => {
+const LogInInner = () => {
     const route = useRoute();
+    const { loadRegister } = useReload();
 
     const [data, setData] = useState({
         username: "",
         password: "",
     });
 
-    const [reload, setReload] = useState(false);
     const [validationErr, setValidationError] = useState({});
     const [submitting, setSubmitting] = useState(false);
 
@@ -46,7 +50,7 @@ const LogIn = () => {
         if (submitting) return; // avoid double submit
 
         setSubmitting(true);
-        setReload(true);
+        loadRegister(true, "logo");
 
         axios
             .post(route("log-in"), data)
@@ -60,13 +64,13 @@ const LogIn = () => {
                         username: '',
                         password: ''
                     })
-                    setReload(false)
+                    loadRegister(false)
                     window.location.reload();
                 });
 
             })
             .catch((err) => {
-                setReload(false);
+                loadRegister(false);
                 setSubmitting(false);
 
                 const backend = err.response.data;
@@ -82,11 +86,9 @@ const LogIn = () => {
         <>
             <Head title="Pilar College Prefect of Discipline of the Higher Education Department" />
 
-            <Reload transition={reload ? "opacity-1 z-20" : "opacity-0"} type="logo" />
-
             <div className="w-full h-[100vh]">
                 <div className="flex w-full h-full">
-                    <div className="w-full h-full relative">
+                    <div className="hidden md:block w-full h-full relative">
                         <div className="absolute w-full h-full bg-[#000000a6]"></div>
                         <p className="text-white text-[3em] font-bold absolute frm px-10 mt-10">Hello Welcome! Praised Be Jesus And Mary</p>
                         <img src={background} alt="" className="h-full object-cover" />

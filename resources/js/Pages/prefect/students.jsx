@@ -4,7 +4,6 @@ import StudentList from "@/Components/list/student-list"
 import AuthLayout from "@/Layouts/auth-layout"
 import { useState } from "react"
 import { router } from "@inertiajs/react"
-import ProgramLegend from "@/Components/other/program-legend"
 
 const PrefectStudents = (props) => {
   const [search, setSearch] = useState("")
@@ -70,9 +69,6 @@ const PrefectStudents = (props) => {
                   val={params.get("school-year")}
                   onChange={(e) => handleSelect("school-year", e.target.value)}
               />
-            </div>
-            <div className="w-auto">
-                <ProgramLegend list={props.program} />
             </div>
           </div>
 

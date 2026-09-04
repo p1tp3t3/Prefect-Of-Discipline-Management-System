@@ -1,6 +1,6 @@
 import SelectedUser from "@/Components/other/selected-user"
 import UpModal from "../up-modal"
-import { APIRequest } from "@/others/classes/api-req"
+import { GatePassService } from "@/others/services/gatepass-service"
 import { useState, useEffect } from "react"
 import { change, disablePrevDate, getProfilePic, readableDate, readableTime, toTitleCase } from "@/others/function"
 import CircleReload from "@/Components/reload/circle-reload"
@@ -33,9 +33,7 @@ const ViewGatePassModal = (props) => {
     }, [props.close])
     
     const getGatePassInfo = () => {
-        const id = props.id
-        const api = new APIRequest(`/gatepass/${id}`, 'get', {}, setData)
-        api.fetchData()
+        GatePassService.getGatePassInfo(props.id, setData)
     }
 
     const handleSubmit = (e) => {

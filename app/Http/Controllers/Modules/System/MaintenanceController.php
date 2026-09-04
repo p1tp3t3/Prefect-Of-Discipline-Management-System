@@ -5,12 +5,18 @@ namespace App\Http\Controllers\Modules\System;
 use App\Events\MaintenanceModeToggled;
 use App\Exports\UserAccountExport;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Program\DestroyProgramRequest;
+use App\Http\Requests\Program\StoreProgramRequest;
+use App\Http\Requests\Program\UpdateProgramRequest;
+use App\Http\Resources\ProgramResource;
+use App\Http\Resources\UserResource;
 use App\Models\ComplaintSubject;
 use App\Models\ComplaintSubjectViolation;
 use App\Models\Enrollment;
 use App\Models\Penalty;
 use App\Models\Program;
 use App\Models\TeachingStaff;
+use App\Models\User;
 use App\Models\Violation;
 use App\Models\ViolationPenalty;
 use Illuminate\Http\Request;
@@ -18,6 +24,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Maatwebsite\Excel\Facades\Excel;
@@ -48,25 +55,60 @@ class MaintenanceController extends Controller
 
     /**
      * Violation type / penalty management — shared by super_admin and sub_admin,
-     * moved out of the super_admin-only Maintenance page.
+     * moved out of the super_admin-only Maintenance page. Also carries the
+     * "Student Violations" tab's data (folded in from the old standalone
+     * /prefect/violation page, which duplicated this same section).
      */
     public function violationManagementIndex() {
         $violations = Violation::query()
-                        ->with(['penalties' => function ($q) {
-                            $q->join('penalty', 'penalty.id', '=', 'violation_penalty.penalty_id')
-                            ->select(
-                                'violation_penalty.*',
-                                'penalty.description as penalty_description'
-                            );
-                        }])
+                        ->with(['penalties.penalty'])
                         ->latest('created_at')
                         ->get();
 
         return Inertia::render('other/violation-management', [
             'user' => auth()->user(),
             'violation' => $violations,
-            'penalty' => Penalty::latest('created_at')->get()
+            'penalty' => Penalty::latest('created_at')->get(),
+            'program' => Program::all(['id', 'name', 'color_code']),
+            'student_violation_list' => self::getStudentViolationList(),
         ]);
+    }
+
+    private function getStudentViolationList()
+    {
+        return ComplaintSubject::with([
+                    'complaint',
+                    'offenses.violation',
+                    'user.profile',
+                    'user.program',
+                    'user.enrollments',
+                    'user.teachingStaff.program',
+                ])
+                ->whereHas('complaint', function ($q) {
+                    $q->where('complaint_status', 'resolved');
+                })
+                ->get()
+                ->groupBy(fn ($d) => $d->user->id)
+                ->map(function ($group) {
+                    $allOffenses = $group->flatMap(fn ($item) => $item->offenses);
+                    $majorCount = $allOffenses
+                        ->filter(fn ($offense) => optional($offense->violation)->offense_status === 1)
+                        ->count();
+                    $minorCount = $allOffenses
+                        ->filter(fn ($offense) => optional($offense->violation)->offense_status === 0)
+                        ->count();
+
+                    return [
+                        'student_id' => $group->first()->user->id,
+                        'user' => $group->first()->user,
+                        'violation_count' => $allOffenses->count(),
+                        'major_count' => $majorCount,
+                        'minor_count' => $minorCount,
+                        'penalty_count' => $group->count(),
+                    ];
+                })
+                ->filter(fn ($item) => $item['violation_count'] > 0)
+                ->values();
     }
 
     public function toggleMaintenanceMode(Request $request) {
@@ -81,21 +123,44 @@ class MaintenanceController extends Controller
     public function programIndex() {
         return Inertia::render('itrc/program', [
             'user' => auth()->user(),
-            'program' => Program::latest('created_at')->get()
+            'program' => ProgramResource::collection(Program::latest('created_at')->get())
         ]);
     }
-    public function programStore(Request $request)
-    {
-        $data = $request->validate([
-            'name' => 'required|string',
-            'description' => 'required|string',
-            'color' => 'required'
+    public function programUsersIndex($id) {
+        $program = Program::with('programHead.user.profile')->findOrFail($id);
+
+        $faculty = User::with(['profile', 'teachingStaff.program'])
+                    ->where('role', 'teaching_staff')
+                    ->whereHas('teachingStaff', fn($q) => $q->where('program_id', $id)->where('position', '!=', 'program_head'))
+                    ->latest('created_at')
+                    ->get();
+
+        $students = User::with(['profile', 'program', 'enrollments'])
+                    ->where('role', 'student')
+                    ->whereHas('enrollments', fn($q) => $q->where('program_id', $id)->where('status', 'enrolled'))
+                    ->latest('created_at')
+                    ->get();
+
+        return Inertia::render('itrc/program-users', [
+            'user' => auth()->user(),
+            'program' => new ProgramResource($program),
+            'faculty' => UserResource::collection($faculty),
+            'students' => UserResource::collection($students),
         ]);
+    }
+    public function programStore(StoreProgramRequest $request)
+    {
         $data = [
             'name' => Str::upper($request->name),
             'description' => ucwords($request->description),
             'color_code' => $request->color
         ];
+
+        if ($request->hasFile('logo')) {
+            $fileName = time() . '_' . $request->file('logo')->getClientOriginalName();
+            Storage::disk('public')->putFileAs('program-logos', $request->file('logo'), $fileName);
+            $data['logo'] = $fileName;
+        }
 
         $program = Program::create($data);
 
@@ -156,15 +221,11 @@ class MaintenanceController extends Controller
 
         Log::info("ZIP CREATED SUCCESSFULLY", ['zipPath' => $zipPath]);
 
-        return Program::latest('created_at')->get();
+        return ProgramResource::collection(Program::latest('created_at')->get());
     }
-    public function updateProgram(Request $request)
+    public function updateProgram(UpdateProgramRequest $request)
     {
-        $data = $request->validate([
-            'name' => 'required|string',
-            'description' => 'required|string',
-            'color' => 'required'
-        ]);
+        $data = $request->validated();
 
         $program = Program::where('id', $request->id)->first();
 
@@ -179,13 +240,26 @@ class MaintenanceController extends Controller
         $newFaculty = storage_path("app/private/zips/faculty-account-{$program->id}-{$newSlug}.csv");
         $newStudent = storage_path("app/private/zips/student-{$program->id}-{$newSlug}.zip");
 
-        $program = Program::where('id', $request->id);
-        // Update database
-        $program->update([
+        $updateFields = [
             'name' => $data['name'],
             'description' => $data['description'],
             'color_code' => $data['color']
-        ]);
+        ];
+
+        if ($request->hasFile('logo')) {
+            $fileName = time() . '_' . $request->file('logo')->getClientOriginalName();
+            Storage::disk('public')->putFileAs('program-logos', $request->file('logo'), $fileName);
+
+            if ($program->logo) {
+                Storage::disk('public')->delete("program-logos/{$program->logo}");
+            }
+
+            $updateFields['logo'] = $fileName;
+        }
+
+        $program = Program::where('id', $request->id);
+        // Update database
+        $program->update($updateFields);
 
         // Rename files if exists
         if (file_exists($oldFaculty)) {
@@ -196,10 +270,10 @@ class MaintenanceController extends Controller
             rename($oldStudent, $newStudent);
         }
 
-        return Program::latest('created_at')->get();
+        return ProgramResource::collection(Program::latest('created_at')->get());
     }
 
-    public function destroyProgram(Request $request)
+    public function destroyProgram(DestroyProgramRequest $request)
     {
 
         $program = Program::where('id', $request->id)->first();
@@ -220,6 +294,10 @@ class MaintenanceController extends Controller
         $facultyFile = storage_path("app/private/zips/faculty-account-{$program->id}-{$programSlug}.csv");
         $studentZip  = storage_path("app/private/zips/student-{$program->id}-{$programSlug}.zip");
 
+        if ($program->logo) {
+            Storage::disk('public')->delete("program-logos/{$program->logo}");
+        }
+
         // Delete program
         $program->delete();
 
@@ -227,7 +305,7 @@ class MaintenanceController extends Controller
         if (file_exists($facultyFile)) unlink($facultyFile);
         if (file_exists($studentZip)) unlink($studentZip);
 
-        return Program::latest('created_at')->get();
+        return ProgramResource::collection(Program::latest('created_at')->get());
     }
 
 

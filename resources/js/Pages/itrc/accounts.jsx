@@ -1,23 +1,33 @@
 import AuthLayout from "@/Layouts/auth-layout";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { router } from "@inertiajs/react";
 import AccountList from "@/Components/list/account-list";
+import AccountFilesTab from "@/Components/other/account-files-tab";
+import TabSwitcher from "@/Components/other/tab-switcher";
 import EditUserInfoModal from "@/Components/modal/submission-form/edit-user-information-modal";
-import Reload from "@/Components/reload/reload";
-import { APIRequest } from "@/others/classes/api-req";
-import Btn from "@/Components/button/normal-btn";
-import ViewUserAccountFileModal from "@/Components/modal/view/view-user-account-file-modal";
+import { useReload } from "@/context-provider/reload-provider";
+import { AccountService } from "@/others/services/account-service";
 import { showOutputModal, showWarningModal } from "@/others/function";
 
 const Accounts = (props) => {
   const [editUserInfo, openEditUserInfo] = useState(false),
     [data, setData] = useState(null),
     [profile, setProfile] = useState(""),
-    [reload, setReload] = useState(false),
-    [reloadType, setReloadType] = useState(""),
-    [reloadLabel, setReloadLabel] = useState(""),
-    [userAccountFile, openViewUserAccountFile] = useState(false),
     [deleteUser, openDeleteUser] = useState(false),
     [clickedOk, setClickOk] = useState(false);
+
+  const { loadRegister, setReload, setOnClose } = useReload();
+
+  useEffect(() => {
+    setOnClose(() => (e) => {
+      setReload(e);
+      if (clickedOk) window.location.reload();
+      setClickOk(false);
+    });
+  }, [clickedOk]);
+
+  const activeTab = new URLSearchParams(window.location.search).get("tab") || "users";
+  const goToTab = (tab) => router.visit(`/super-admin/user-accounts?tab=${tab}`);
 
   const showEditUserInfo = (data) => {
     openEditUserInfo(true);
@@ -34,11 +44,8 @@ const Accounts = (props) => {
         const d = { user_id: data.id, user_type: data.role };
 
         loadRegister(true, "text-wait", "Deleting Account Is Processing");
-        const api = new APIRequest(
-          "/super-admin/user-accounts/del",
-          "post",
+        AccountService.deleteAccount(
           d,
-          null,
           () => {
             loadRegister(true, "");
             showOutputModal(
@@ -59,20 +66,8 @@ const Accounts = (props) => {
             )
           }
         );
-
-        api.sendPostData();
       }
     )
-  };
-
-  const loadRegister = (r, t, l) => {
-    setReload(r);
-    setReloadType(t);
-    setReloadLabel(l);
-  };
-
-  const isReload = () => {
-    return reload ? "opacity-1 z-[100]" : "opacity-0 z-[-1]";
   };
 
   const buttonStyle =
@@ -80,22 +75,6 @@ const Accounts = (props) => {
 
   return (
     <>
-      <Reload
-        transition={isReload()}
-        type={reloadType}
-        label={reloadLabel}
-        onClose={(e) => {
-          setReload(e);
-          if (clickedOk) window.location.reload();
-          setClickOk(false);
-        }}
-      />
-      <ViewUserAccountFileModal
-        close={userAccountFile}
-        closeModal={openViewUserAccountFile}
-        pd={["px-5", "py-7"]}
-        isEnableOuterClose={true}
-      />
       <EditUserInfoModal
         close={editUserInfo}
         closeModal={openEditUserInfo}
@@ -110,23 +89,37 @@ const Accounts = (props) => {
         {/* Header */}
         <div className="flex flex-col sm:flex-row w-full justify-between items-start sm:items-center gap-3">
           <h1 className="text-[1.3em] sm:text-[1.5em] font-bold">USER LIST</h1>
-          <div className="text-[1em]">
-            <Btn onclick={() => openViewUserAccountFile(true)}>
-              <i className="fa-solid fa-file"></i> User Account Files
-            </Btn>
-          </div>
         </div>
 
-        {/* Account List */}
-        <div className="">
-          <AccountList
-            row={props.account_list}
-            openEditUserInfo={showEditUserInfo}
-            deleteUser={openDeleteUserAccount}
-            program={props.program}
-            reload={loadRegister}
+        {/* Tabs */}
+        <div className="mt-3">
+          <TabSwitcher
+            tabs={[
+              { key: "users", label: "Users" },
+              { key: "files", label: "Account Files" },
+            ]}
+            value={activeTab}
+            onChange={goToTab}
           />
         </div>
+
+        {activeTab === "users" && (
+          <div className="pt-3">
+            <AccountList
+              row={props.account_list}
+              openEditUserInfo={showEditUserInfo}
+              deleteUser={openDeleteUserAccount}
+              program={props.program}
+              reload={loadRegister}
+            />
+          </div>
+        )}
+
+        {activeTab === "files" && (
+          <div className="pt-3">
+            <AccountFilesTab files={props.account_files} canDelete={true} />
+          </div>
+        )}
       </div>
     </>
   );

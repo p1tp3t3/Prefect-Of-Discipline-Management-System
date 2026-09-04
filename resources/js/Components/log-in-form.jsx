@@ -4,12 +4,13 @@ import header from "../images/pilar.png";
 import { Link } from "@inertiajs/react";
 import FormButton from "./button/button";
 import CheckBoxButton from "./input/checkbox";
+import { User, Lock } from "lucide-react";
 
 const LogInForm = (props) => {
 
 
   return (
-    <div className="w-[35rem] grid items-center px-4 sm:px-6 md:px-0 flex-shrink-0 bg-white">
+    <div className="w-full md:w-[35rem] grid items-center px-4 sm:px-6 md:px-0 md:flex-shrink-0 bg-white">
       <form
         className="w-full flex flex-col gap-5"
         onSubmit={props.submit}
@@ -55,7 +56,7 @@ const LogInForm = (props) => {
                 change={props.onchange}
                 error={props.validationErr.username}
                 errorAsterisk={props.validationErr.usernameAsterisk}
-                icon="fa-solid fa-user"
+                icon={User}
               />
 
               {/* PASSWORD FIELD */}
@@ -66,7 +67,7 @@ const LogInForm = (props) => {
                 id="password"
                 val={props.data.password}
                 change={props.onchange}
-                icon="fa-solid fa-lock"
+                icon={Lock}
                 enableShowPassword={true}
                 error={props.validationErr.password}
                 errorAsterisk={props.validationErr.passwordAsterisk}

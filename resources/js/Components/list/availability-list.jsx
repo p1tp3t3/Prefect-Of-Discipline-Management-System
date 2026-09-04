@@ -1,8 +1,9 @@
 import { useContext, useEffect, useState } from "react"
 import AuthContext from "@/context-provider/auth-provider"
 import { Link } from "@inertiajs/react"
-import { APIRequest } from "@/others/classes/api-req"
-import CircleReload from "../reload/circle-reload"
+import { TransactionService } from "@/others/services/transaction-service"
+import ListSkeleton from "../reload/list-skeleton"
+import { FileText } from "lucide-react"
 
 const AvailabilityList = () => {
 
@@ -11,9 +12,7 @@ const AvailabilityList = () => {
     const [limit, setLimit] = useState(null)
 
     useEffect(() => {
-        const api = new APIRequest('/transaction/limit', 'get')
-        api.setSetter(setLimit)
-        api.fetchData()
+        TransactionService.getLimit(setLimit)
     }, [])
 
     const checkUserType = () => {
@@ -85,7 +84,7 @@ const AvailabilityList = () => {
                                     />)
                                     :
                                     <div className="mt-auto mb-auto">
-                                        <CircleReload size={3} />
+                                        <ListSkeleton rows={3} />
                                     </div>}
                                 </div>
                             </div>
@@ -106,7 +105,7 @@ const Row = ({ type, route, limit, requested }) => {
             <div className="px-3 py-2 border bg-white rounded-md w-full">
                 <div className="flex w-full relative items-center">
                     <div className="flex gap-3">
-                        <i className={`fa-solid fa-file text-[1.7em] ${available}`}></i>
+                        <FileText size="1.7em" className={available} />
                         <div className="grid gap-2">
                             <div>
                                 <div className="text-[0.9em]"><b>{label}</b></div>

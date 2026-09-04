@@ -1,5 +1,4 @@
 import NotifDisplayLayout from "@/Layouts/notif-display-layout"
-import { APIRequest } from "@/others/classes/api-req"
 import { readableDate, readableTime } from "@/others/function"
 import { useEffect, useState } from "react"
 

@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Modules\System;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
@@ -14,17 +14,14 @@ class SystemSettingsController extends Controller
 {
     public function index()
     {
-        $mailConfig = Cache::get('mail_config');
-
         return Inertia::render('itrc/system-settings', [
             'user' => auth()->user(),
-            'has_login_portal_password' => Cache::has('maintenance_login_secret')
-                || !empty(config('app.maintenance_login_secret')),
-            'mail_config' => $mailConfig ? [
-                'username' => $mailConfig['username'] ?? '',
-                'has_password' => !empty($mailConfig['password'] ?? null),
-            ] : null,
-            'app_name' => Cache::get('app_name', config('app.name')),
+            'has_login_portal_password' => !empty(config('app.maintenance_login_secret')),
+            'mail_config' => [
+                'username' => config('mail.mailers.smtp.username') ?? '',
+                'has_password' => !empty(config('mail.mailers.smtp.password')),
+            ],
+            'app_name' => config('app.name'),
         ]);
     }
 
@@ -34,7 +31,8 @@ class SystemSettingsController extends Controller
             'app_name' => 'required|string|max:100',
         ]);
 
-        Cache::forever('app_name', $request->app_name);
+        self::setEnvValue('APP_NAME', $request->app_name);
+        Artisan::call('config:clear');
         config(['app.name' => $request->app_name]);
 
         return response()->json(['message' => 'System name updated successfully.', 'app_name' => $request->app_name]);
@@ -46,11 +44,18 @@ class SystemSettingsController extends Controller
             'password' => 'required|string|min:8|confirmed',
         ]);
 
-        Cache::forever('maintenance_login_secret', Hash::make($request->password));
+        self::setEnvValue('MAINTENANCE_LOGIN_SECRET', Hash::make($request->password));
+        Artisan::call('config:clear');
+        config(['app.maintenance_login_secret' => env('MAINTENANCE_LOGIN_SECRET')]);
 
         return response()->json(['message' => 'Login portal password updated successfully.']);
     }
 
+    /**
+     * Writes straight into .env — this is the single source of truth for
+     * mail credentials (no cache indirection, so what's in .env is always
+     * exactly what's in effect, and editing .env by hand also just works).
+     */
     public function updateMailConfig(Request $request)
     {
         $data = $request->validate([
@@ -58,15 +63,14 @@ class SystemSettingsController extends Controller
             'password' => 'nullable|string',
         ]);
 
-        $existing = Cache::get('mail_config', []);
+        if (filled($data['username'] ?? null)) {
+            self::setEnvValue('MAIL_USERNAME', $data['username']);
+        }
+        if (filled($data['password'] ?? null)) {
+            self::setEnvValue('MAIL_PASSWORD', $data['password']);
+        }
 
-        Cache::forever('mail_config', [
-            'username' => $data['username'] ?? null,
-            'password' => filled($data['password'] ?? null)
-                ? Crypt::encryptString($data['password'])
-                : ($existing['password'] ?? null),
-        ]);
-
+        Artisan::call('config:clear');
         $this->applyMailConfig();
 
         return response()->json(['message' => 'Mail configuration saved successfully.']);
@@ -92,25 +96,35 @@ class SystemSettingsController extends Controller
     }
 
     /**
-     * Apply the cache-stored SMTP credentials to Laravel's runtime config for
-     * the remainder of this request (also applied on every request boot via
-     * AppServiceProvider so all Mail::/Mailable calls pick it up). Host, port,
-     * encryption scheme, and from-address are all fixed via .env — only the
-     * account username/password are editable here.
+     * Re-reads MAIL_USERNAME/MAIL_PASSWORD from the environment into the
+     * runtime config for the remainder of this request — only needed
+     * because config:clear (called above) doesn't retroactively update
+     * config() values already resolved earlier in the *same* request.
      */
     public static function applyMailConfig(): void
     {
-        $mailConfig = Cache::get('mail_config');
-
-        if (!$mailConfig) {
-            return;
-        }
-
         config([
-            'mail.mailers.smtp.username' => $mailConfig['username'] ?? config('mail.mailers.smtp.username'),
-            'mail.mailers.smtp.password' => !empty($mailConfig['password'])
-                ? Crypt::decryptString($mailConfig['password'])
-                : config('mail.mailers.smtp.password'),
+            'mail.mailers.smtp.username' => env('MAIL_USERNAME'),
+            'mail.mailers.smtp.password' => env('MAIL_PASSWORD'),
         ]);
+    }
+
+    private static function setEnvValue(string $key, string $value): void
+    {
+        $path = base_path('.env');
+        $content = File::get($path);
+
+        $escaped = preg_match('/[\s"\'#$]/', $value) ? '"' . str_replace('"', '\\"', $value) . '"' : $value;
+        $line = "{$key}={$escaped}";
+
+        // preg_replace's replacement string treats "$1"/"$2" etc as
+        // backreferences — a bcrypt hash like "$2y$10$..." would get
+        // silently mangled if passed there directly, so the replacement is
+        // built inside a callback instead, where it's used literally.
+        $content = preg_match("/^{$key}=.*/m", $content)
+            ? preg_replace_callback("/^{$key}=.*/m", fn () => $line, $content)
+            : rtrim($content) . "\n{$line}\n";
+
+        File::put($path, $content);
     }
 }

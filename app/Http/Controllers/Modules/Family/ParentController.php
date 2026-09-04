@@ -115,7 +115,7 @@ class ParentController extends Controller
         $register = new RegisteredUserController();
         $parentId = $register->generateParentId();
         $details = $request->parent_details;
-        $username = $register->generateUsername($details->first_name);
+        $username = generate_username($details->first_name);
         $password = random_int(100000000, 999999999);
         
 

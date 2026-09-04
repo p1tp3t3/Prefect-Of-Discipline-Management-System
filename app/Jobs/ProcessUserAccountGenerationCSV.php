@@ -3,8 +3,6 @@
 namespace App\Jobs;
 
 use App\Exports\UserAccountExport;
-use App\Http\Controllers\Modules\Account\RegisteredUserController;
-use App\Http\Controllers\NotificationController;
 use App\Models\EducationBackground;
 use App\Models\Enrollment;
 use App\Models\Profile;
@@ -49,10 +47,9 @@ class ProcessUserAccountGenerationCSV implements ShouldQueue
 
         try {
 
-            $register = new RegisteredUserController();
             $userType = $this->userType; // 'student' | 'teaching_staff' | 'non_teaching_staff'
             $activate = $this->activate;
-            $csvArr = $register->getUserDf($this->csvPath);
+            $csvArr = get_user_df($this->csvPath);
             $grouped = [];
             $validationErrors = self::validateUserCSV($csvArr, $userType);
 
@@ -70,7 +67,7 @@ class ProcessUserAccountGenerationCSV implements ShouldQueue
                     $hashedPassword = $existingUser->password;
                     $plainPassword = $this->getOldPasswordFromZip($id, $csv, $userType);
                 } else {
-                    $username = $register->generateUsername($csv['first_name']);
+                    $username = generate_username($csv['first_name']);
                     $plainPassword = random_int(10000000, 99999999);
                     $hashedPassword = Hash::make($plainPassword);
                 }
@@ -99,7 +96,7 @@ class ProcessUserAccountGenerationCSV implements ShouldQueue
 
                 UserPermission::updateOrInsert(
                     ['user_id' => $user->id],
-                    $register->getUserAccessField([], $userType)
+                    get_user_access_field([], $userType)
                 );
 
                 // === STUDENT ===
@@ -178,9 +175,7 @@ class ProcessUserAccountGenerationCSV implements ShouldQueue
 
 
             // ✅ Success notification
-            $notif = new NotificationController();
-
-            $notif->notifySingleUser(
+            notify_single_user(
                 self::getUserAccountGenerationNotif(true),
                 [
                     'title' => 'User Account Registration',
@@ -211,8 +206,7 @@ class ProcessUserAccountGenerationCSV implements ShouldQueue
                 $errorFile = $this->generateValidationErrorTxtBlob([$e->getMessage()]);
             }
 
-            $notif = new NotificationController();
-            $notif->notifySingleUser(
+            notify_single_user(
                 $this->getUserAccountGenerationNotif(false, $errorFile),
                 [
                     'title' => 'User Account Registration',

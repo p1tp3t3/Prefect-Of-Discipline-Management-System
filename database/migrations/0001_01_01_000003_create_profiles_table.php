@@ -17,6 +17,8 @@ return new class extends Migration
             $table->string('middle_name')
                   ->nullable();
             $table->string('last_name');
+            $table->string('suffix')
+                  ->nullable();
             $table->string('profile_picture')->nullable();
             $table->enum('sex', ['m', 'f'])->nullable();
             $table->date('date_of_birth')->nullable();

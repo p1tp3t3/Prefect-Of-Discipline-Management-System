@@ -34,13 +34,17 @@ class IncidentReportExport extends StringValueBinder implements
     protected $title;
     protected $individual;
     protected $user;
+    protected $type;
+    protected $reportNumber;
 
-    public function __construct(Collection $records, string $title = 'Incident Report', bool $individual = false, $user = null)
+    public function __construct(Collection $records, string $title = 'Incident Report', bool $individual = false, $user = null, string $type = 'violation', ?string $reportNumber = null)
     {
         $this->records   = $records;
         $this->title     = $title;
         $this->individual = $individual;
         $this->user       = $user;
+        $this->type       = $type;
+        $this->reportNumber = $reportNumber;
     }
 
     public function collection()
@@ -54,14 +58,16 @@ class IncidentReportExport extends StringValueBinder implements
         $data = ['#'];
 
         if ($this->individual) {
-            return request('type') === 'incident'
-                ? array_merge($data, ['Complainant Name', 'Incident Reported', 'Date/Time'])
-                : array_merge($data, ['Violation', 'Status', 'Date/Time']);
+            if ($this->type === 'incident') {
+                return array_merge($data, ['Student ID', 'Complaint No.', 'Case No.', 'Incident', 'Complainant', 'Date/Time', 'Resolved At', 'Violation', 'Occurrence', 'Penalty']);
+            }
+
+            return array_merge($data, ['Violation', 'Status', 'Occurrence', 'Penalty', 'Date/Time']);
         }
 
         $data = ['#', 'Student ID', 'Name', 'Program'];
 
-        return request('type') === 'incident'
+        return $this->type === 'incident'
             ? array_merge($data, ['Complainant Name', 'Incident Reported', 'Date/Time'])
             : array_merge($data, ['Violation', 'Status', 'Date/Time']);
     }
@@ -72,17 +78,28 @@ class IncidentReportExport extends StringValueBinder implements
         if ($this->individual) {
             $data = [$record['i'] ?? '—'];
 
-            return request('type') === 'incident'
-                ? array_merge($data, [
-                    $record['complainant_name'] ?? '—',
+            if ($this->type === 'incident') {
+                return array_merge($data, [
+                    $record['student_id'] ?? '—',
+                    $record['complaint_number'] ?? '—',
+                    $record['case_number'] ?? '—',
                     $record['incident'] ?? '—',
-                    isset($record['date_time']) ? Carbon::parse($record['date_time'])->format('F j, Y g:i A') : '—',
-                ])
-                : array_merge($data, [
-                    $record['violation'] ?? '—',
-                    $record['status'] ?? '—',
-                    isset($record['date_time']) ? Carbon::parse($record['date_time'])->format('F j, Y g:i A') : '—',
+                    $record['complainant'] ?? '—',
+                    $record['date_time'] ?? '—',
+                    $record['resolved_at'] ?? '—',
+                    $record['violation_name'] ?? '—',
+                    $record['occurrence'] ?? '—',
+                    $record['penalty'] ?? '—',
                 ]);
+            }
+
+            return array_merge($data, [
+                $record['violation'] ?? '—',
+                $record['status'] ?? '—',
+                $record['occurrence'] ?? '—',
+                $record['penalty'] ?? '—',
+                isset($record['date_time']) ? Carbon::parse($record['date_time'])->format('F j, Y g:i A') : '—',
+            ]);
         }
 
         $data = [
@@ -92,7 +109,7 @@ class IncidentReportExport extends StringValueBinder implements
             $record['program'] ?? '—',
         ];
 
-        return request('type') === 'incident'
+        return $this->type === 'incident'
             ? array_merge($data, [
                 $record['complainant_name'] ?? '—',
                 $record['incident'] ?? '—',
@@ -118,6 +135,10 @@ class IncidentReportExport extends StringValueBinder implements
     /** SHEET STYLES */
     public function styles(Worksheet $sheet)
     {
+        $sheet->setCellValue('A6', 'Reference No.:');
+        $sheet->setCellValue('B6', $this->reportNumber ?? 'N/A');
+        $sheet->getStyle('A6')->getFont()->setBold(true);
+
         if ($this->individual && !is_null($this->user)) {
             $name =  $this->user['first_name'] . ' ' . $this->user['middle_name'] . ' ' . $this->user['last_name'];
 
@@ -138,8 +159,8 @@ class IncidentReportExport extends StringValueBinder implements
             $sheet->mergeCells('A7:D7');
         }
 
-        // Auto-size columns A-F
-        foreach (range('A', 'F') as $col) {
+        // Auto-size every column actually used
+        foreach (range('A', 'J') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 
@@ -154,7 +175,9 @@ class IncidentReportExport extends StringValueBinder implements
 
                 $sheet = $event->sheet->getDelegate();
 
-                $columnCount = $this->individual ? 4 : 8;
+                $columnCount = $this->individual
+                    ? ($this->type === 'incident' ? 10 : 6)
+                    : 8;
                 $lastColumn  = chr(ord('A') + $columnCount - 1);
 
                 // Title Row

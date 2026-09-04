@@ -1,22 +1,19 @@
 import AuthLayout from "@/Layouts/auth-layout";
 import "../style.css";
 import { useState, useRef, useEffect } from "react";
-import Reload from "@/Components/reload/reload";
+import { useReload } from "@/context-provider/reload-provider";
+import { RegisterService } from "@/others/services/register-service";
 import logo from '../../images/pilar.png'
 import RegistrationForm from "./register/main-form";
 import NormalValidationModal from "@/Components/modal/validation/normal-validation-modal";
-import { APIRequest } from "@/others/classes/api-req";
+import { UserPlus } from "lucide-react";
 import { showOutputModal, showWarningModal, toTitleCase } from "@/others/function";
-import ViewUploadGuidelinesModal from "@/Components/modal/view/view-upload-guidelines-modal";
-import Btn from "@/Components/button/normal-btn";
-import CsvStudentPreviewModal from "@/Components/modal/submission-form/csv-student-preview-modal";
+import CsvStudentPreviewPage from "@/Components/other/csv-student-preview-page";
 import CsvStudentProgressModal from "@/Components/modal/view/csv-student-progress-modal";
 
 const Register = (props) => {
-    const [reload, setReload] = useState(false),
-          [reloadType, setReloadType] = useState(""),
-          [reloadLabel, setReloadLabel] = useState(""),
-          [userListCSV, openUserListCSV] = useState(false),
+    const { loadRegister } = useReload();
+    const [userListCSV, openUserListCSV] = useState(false),
           [csvFile, setCSVFile] = useState(null),
           [csvRowCount, setCSVRowCount] = useState(0),
           [errorFileText, setErrorFileText] = useState(''),
@@ -33,14 +30,14 @@ const Register = (props) => {
                password: '',
                confirm_password: ''
           }),
-          [guidelines, openGuidelines] = useState(false),
           [csvColumn, setCSVColumn] = useState(''),
 
           [csvPreview, openCsvPreview] = useState(false),
           [csvPreviewRows, setCsvPreviewRows] = useState([]),
           [csvProgress, openCsvProgress] = useState(false),
           [csvBatchId, setCsvBatchId] = useState(null),
-          [csvBatchTotal, setCsvBatchTotal] = useState(0);
+          [csvBatchTotal, setCsvBatchTotal] = useState(0),
+          [uploadingCSV, setUploadingCSV] = useState(false);
 
     const [activate, activateAccount] = useState(false);
 
@@ -60,6 +57,7 @@ const Register = (props) => {
         first_name: "",
         middle_name: "",
         last_name: "",
+        suffix: "",
         user_id: "",
         sex: "m",
         user_type: "",
@@ -67,15 +65,6 @@ const Register = (props) => {
         password: "",
         confirm_password: "",
     }
-
-    const loadRegister = (r, t, l) => {
-        setReload(r);
-        setReloadType(t);
-        setReloadLabel(l);
-    };
-    const isReload = () => {
-        return reload ? "opacity-1 z-[100]" : "opacity-0 z-[-1]";
-    };
 
     const sex = [
         { val: 'm', label: 'Male' },
@@ -98,6 +87,7 @@ const Register = (props) => {
     ]
     const handleFileChange = (e, t) => {
         const file = e.target.files[0];
+        setValidationError((prev) => ({ ...prev, file: '' }))
         if(file) {
             setUserType(t)
             validateCSV(file, t)
@@ -116,13 +106,11 @@ const Register = (props) => {
                             }
                         )
                     }
-                }else {
-                    if(!param[0]) {
-                        param[2]()
-                    }if(!param[1]) {
-                        param[3]()
-                    }
                 }
+                // else: validateCSV already recorded the specific error in validationError.file
+            })
+            .catch(() => {
+                // validateCSV already recorded the specific error in validationError.file
             })
         }else {
             setCSVFile(null)
@@ -145,49 +133,43 @@ const Register = (props) => {
             activate: activate
         }
         openUserListCSV(false)
-        loadRegister(true, 'text-wait', `Uploading ${toTitleCase(type)} CSV File. Please Wait`)
+        setUploadingCSV(true)
 
-        const api = new APIRequest(
-            '/super-admin/register/upload-user', 'post', data, () => {}, success, error
-        )
-        api.sendPostData()
+        RegisterService.uploadUserCsv(data, success, error)
     }
     const success = () => {
-        loadRegister(true, '')
+        setUploadingCSV(false)
         showOutputModal(
             `${toTitleCase(type)} CSV File Uploaded Successfully. We Will Notify You Once All Accounts Are Completely Generated.`,
             's',
-            () => {
-                loadRegister(false)
-            }
+            () => {}
         )
     }
     const previewStudentCsvFile = (file) => {
-        loadRegister(true, 'text-wait', 'Parsing Student CSV File. Please Wait')
+        setUploadingCSV(true)
         const data = new FormData()
         data.append('file', file)
-        const api = new APIRequest(
-            '/super-admin/register/preview-student-csv', 'post', data,
+        RegisterService.previewStudentCsv(
+            data,
             (res) => {
                 setCsvPreviewRows(res.rows)
                 sessionStorage.setItem('student-csv-preview', JSON.stringify(res.rows))
             },
             () => {
-                loadRegister(false)
+                setUploadingCSV(false)
                 openUserListCSV(false)
                 openCsvPreview(true)
             },
             (e) => {
                 setCSVFile(null)
-                loadRegister(true, '')
+                setUploadingCSV(false)
                 showOutputModal(
                     `Error Parsing CSV File. ${e.response?.data?.message ?? ''}`,
                     'e',
-                    () => loadRegister(false)
+                    () => {}
                 )
             }
         )
-        api.fetchData()
     }
     const cancelCsvPreview = () => {
         setCsvPreviewRows([])
@@ -199,9 +181,8 @@ const Register = (props) => {
         setCsvBatchTotal(csvPreviewRows.length)
         openCsvPreview(false)
         loadRegister(true, 'text-wait', 'Starting Student Account Generation')
-        const api = new APIRequest(
-            '/super-admin/register/commit-student-csv', 'post',
-            { rows: csvPreviewRows.map((r) => r.data), activate },
+        RegisterService.commitStudentCsv(
+            csvPreviewRows.map((r) => r.data), activate,
             (res) => {
                 setCsvBatchId(res.batch_id)
             },
@@ -219,8 +200,6 @@ const Register = (props) => {
                 )
             }
         )
-        api.setHeaders({ 'Content-Type': 'application/json' })
-        api.fetchData()
     }
     const closeCsvProgress = () => {
         openCsvProgress(false)
@@ -231,13 +210,11 @@ const Register = (props) => {
     }
     const error = (e) => {
         const err = e.response.data.message
-        loadRegister(true, '')
+        setUploadingCSV(false)
         showOutputModal(
             `Error in Uploading ${toTitleCase(type)} CSV File. ${err}`,
             'e',
-            () => {
-                loadRegister(false)
-            }
+            () => {}
         )
     }
     const handleDownloadErrorClick = (txt) => {
@@ -293,7 +270,7 @@ const Register = (props) => {
             // 3️⃣ Define required columns
             const commonCol = ["id", "first_name", "middle_name", "last_name", "sex", "email"];
             const col = {
-                student: commonCol.concat(["program", "year_level", "school_year"]),
+                student: ["id", "first_name", "middle_name", "last_name", "suffix", "sex", "email", "program", "year_level", "school_year", "enrolled_at"],
                 faculty: commonCol.concat(["program"]),
                 administrative: commonCol.concat(["program"]),
                 staff: commonCol.concat(["work_type"]),
@@ -317,14 +294,18 @@ const Register = (props) => {
                 const rowCount = rows.length - 1;
                 const hasRows = rowCount >= 1;
 
-                // 6️⃣ Validate program IDs (only if "program" column exists)
+                // 6️⃣ Validate program (only if "program" column exists)
                 let invalidPrograms = [];
                 const programIndex = headers.indexOf("program");
                 if (programIndex !== -1) {
-                    const validProgramIDs = ["1", "2", "3", "4", "5", "6", "7"];
+                    const isNameBased = t === 'student';
+                    const validPrograms = isNameBased
+                        ? props.program.map((p) => p.name.toLowerCase())
+                        : props.program.map((p) => String(p.id));
                     for (let i = 1; i < rows.length; i++) {
                         const programVal = rows[i][programIndex]?.trim();
-                        if (programVal && !validProgramIDs.includes(programVal)) {
+                        const check = isNameBased ? programVal?.toLowerCase() : programVal;
+                        if (programVal && !validPrograms.includes(check)) {
                             invalidPrograms.push({ row: i + 1, value: programVal });
                         }
                     }
@@ -347,17 +328,11 @@ const Register = (props) => {
                     setValidationError((prev) => ({
                         ...prev,
                         file:
-                            `Invalid program IDs found at rows: ${invalidPrograms
+                            `Invalid program${t === 'student' ? ' names' : ' IDs'} found at rows: ${invalidPrograms
                                 .map((r) => `${r.row} (${r.value})`)
                                 .join(", ")}. ` +
-                            "Allowed IDs:\n" +
-                            "1 - Bachelor of Science in Information Technology\n" +
-                            "2 - Bachelor of Library and Information Science\n" +
-                            "3 - Bachelor of Elementary Education\n" +
-                            "4 - Bachelor of Science in Nursing\n" +
-                            "5 - Bachelor of Science in Hospitality Management\n" +
-                            "6 - Bachelor of Science in Business Administration\n" +
-                            "7 - Bachelor of Science in Tourism Management",
+                            `Allowed ${t === 'student' ? 'names' : 'IDs'}:\n` +
+                            props.program.map((p) => `${t === 'student' ? p.name : p.id} - ${p.description}`).join("\n"),
                     }));
 
                 // Final validation results
@@ -379,26 +354,6 @@ const Register = (props) => {
 
     return (
         <>
-        <Reload
-            transition={isReload()}
-            type={reloadType}
-            label={reloadLabel}
-        />
-        <ViewUploadGuidelinesModal
-            close={guidelines} 
-            closeModal={openGuidelines} 
-            pd={['px-5', 'py-7']}
-            isEnableOuterClose={true}
-            type={type} 
-            program={props.program}
-        />
-        <CsvStudentPreviewModal
-            close={csvPreview}
-            closeModal={openCsvPreview}
-            rows={csvPreviewRows}
-            onCancel={cancelCsvPreview}
-            onFinalize={finalizeStudentCsv}
-        />
         <CsvStudentProgressModal
             close={csvProgress}
             closeModal={openCsvProgress}
@@ -412,7 +367,7 @@ const Register = (props) => {
             closeModal={openUserListCSV} 
             pd={['px-5', 'py-7']}
             isEnableOuterClose={true} 
-            icon='fa-user-plus'
+            icon={UserPlus}
             label={validationLabel}
             btn={[
                 { 
@@ -430,6 +385,13 @@ const Register = (props) => {
                 },
             ]}
         />
+        {csvPreview ? (
+            <CsvStudentPreviewPage
+                rows={csvPreviewRows}
+                onCancel={cancelCsvPreview}
+                onFinalize={finalizeStudentCsv}
+            />
+        ) : (
         <div className="w-full py-4 grid gap-4">
             <div className="w-full grid gap-5 relative">
                 <div className="flex flex-col sm:flex-row w-full justify-between items-start sm:items-center gap-3">
@@ -455,8 +417,8 @@ const Register = (props) => {
                                     setValidationLabel={setValidationLabel}
                                     setCSVColumn={setCSVColumn}
                                     handleToggle={handleToggle}
-                                    openGuidelines={openGuidelines}
                                     setUserType={setUserType}
+                                    uploadingCSV={uploadingCSV}
                                 />
                             </div>
                         </div>
@@ -464,6 +426,7 @@ const Register = (props) => {
                 </div>
             </div>
         </div>
+        )}
         </>
     );
 };

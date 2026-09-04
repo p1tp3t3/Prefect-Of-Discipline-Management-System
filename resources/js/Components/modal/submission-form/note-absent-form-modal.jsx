@@ -3,7 +3,7 @@ import UpModal from "../up-modal"
 import { change, showWarningModal, showOutputModal } from "@/others/function"
 import { useState } from "react"
 import FormButton from "@/Components/button/button"
-import { APIRequest } from "@/others/classes/api-req"
+import { AbsentFormService } from "@/others/services/absent-form-service"
 import Swal from "sweetalert2"
 import withReactContent from "sweetalert2-react-content"
 
@@ -21,8 +21,7 @@ const NoteAbsentFormModal = (props) => {
             'Cancel',
             () => {
                 props.reload(true, 'text-wait', 'Noting Absent Form Is Processing')
-                const api = new APIRequest(`/prefect/absent-form/verify/${props.id}/confirm`, 'post', data, props.setter,  success, error)
-                api.fetchData()
+                AbsentFormService.note(props.id, data, props.setter, success, error)
             }
         )
     }

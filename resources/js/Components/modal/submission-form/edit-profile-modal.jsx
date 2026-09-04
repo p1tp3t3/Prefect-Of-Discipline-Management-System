@@ -14,7 +14,6 @@ import {
 } from "../../../others/function";
 import RadioButton from "@/Components/input/radio";
 import ProfilePicEdit from "@/Components/input/profile-pic-edit-input";
-import { APIRequest } from "@/others/classes/api-req";
 import About from "@/Pages/other/profile/about";
 import { Validator } from "@/others/classes/validator";
 import { requestType } from "@/others/list/type-list";
@@ -44,6 +43,7 @@ const EditProfileModal = (props) => {
         openAccessTokenModal={props.openAccessTokenModal}
         setUpdate={props.setUpdate}
         program={props.program}
+        submitLabel={props.submitLabel}
       />
     </UpModal>
   );
@@ -330,7 +330,7 @@ const Body = (props) => {
 
         {!preview && (
           <div className="flex justify-end">
-            <FormButton label="Save Changes" type="submit" />
+            <FormButton label={props.submitLabel || "Save Changes"} type="submit" />
           </div>
         )}
       </form>

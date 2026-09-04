@@ -5,7 +5,7 @@ import RadioButton from "@/Components/input/radio";
 import FormButton from "../../button/button";
 import ProfilePic from "@/Components/other/profile-pic";
 import { useEffect, useState } from "react";
-import { APIRequest } from "@/others/classes/api-req";
+import { ViolationService } from "@/others/services/violation-service";
 import { change, showWarningModal, getProfilePic, showUserType, showOutputModal } from "../../../others/function";
 
 const IssueViolationModal = (props) => {
@@ -96,11 +96,9 @@ const IssueViolationModal = (props) => {
         f.append("id", props.complaint.id);
         f.append("subjects", JSON.stringify(subjects));
 
-        const api = new APIRequest(
-          "/prefect/violation/create",
-          "post",
+        props.reload(true, "text-wait", "Resolving Complaint is Processing");
+        ViolationService.resolveComplaintToViolation(
           f,
-          () => {},
           () => {
             props.reload(true, '')
             showOutputModal(
@@ -125,9 +123,6 @@ const IssueViolationModal = (props) => {
             )
           }
         );
-
-        props.reload(true, "text-wait", "Resolving Complaint is Processing");
-        api.sendPostData();
       }
     );
   };

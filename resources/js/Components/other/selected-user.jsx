@@ -1,5 +1,6 @@
 import { showUserType } from "../../others/function"
 import ProfilePic from "./profile-pic"
+import { X } from "lucide-react"
 
 const SelectedUser = (props) => {
     const showActive = (props.showActive) ? { showActive: true, isActive: props.activeStatus } : {}
@@ -12,7 +13,7 @@ const SelectedUser = (props) => {
                     className="bg-gray-300 relative top-[-0.3rem] z-[5] w-[1.2rem] h-[1.2rem] rounded-full text-[0.8em]"
                     onClick={() => props.unselect(null)}
                 >
-                    <i className="fa-solid fa-xmark"></i>
+                    <X size={12} />
                 </button>
             </div>}
             <div className="flex gap-2">

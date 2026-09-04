@@ -1,0 +1,43 @@
+.rte-content .ProseMirror {
+    outline: none;
+    min-height: inherit;
+}
+
+.rte-content .ProseMirror p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    float: left;
+    color: #9ca3af;
+    pointer-events: none;
+    height: 0;
+}
+
+.rte-content .ProseMirror h2 {
+    font-size: 1.15em;
+    font-weight: 700;
+    margin: 0.6em 0 0.3em;
+}
+
+.rte-content .ProseMirror p {
+    margin: 0 0 0.5em;
+}
+
+.rte-content .ProseMirror ul,
+.rte-content .ProseMirror ol {
+    padding-left: 1.4em;
+    margin: 0 0 0.5em;
+}
+
+.rte-content .ProseMirror ul {
+    list-style: disc;
+}
+
+.rte-content .ProseMirror ol {
+    list-style: decimal;
+}
+
+.rte-content .ProseMirror blockquote {
+    border-left: 3px solid #d1d5db;
+    margin: 0 0 0.5em;
+    padding-left: 0.8em;
+    color: #4b5563;
+}

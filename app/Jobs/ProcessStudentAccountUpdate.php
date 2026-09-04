@@ -2,7 +2,6 @@
 
 namespace App\Jobs;
 
-use App\Http\Controllers\Modules\Account\RegisteredUserController;
 use App\Models\Enrollment;
 use App\Models\User;
 use Exception;
@@ -32,8 +31,7 @@ class ProcessStudentAccountUpdate implements ShouldQueue
     {
         DB::beginTransaction();
         try {
-            $register = new RegisteredUserController();
-            $csvArr = $register->getUserDf($this->csvPath);
+            $csvArr = get_user_df($this->csvPath);
             $enrolledIds = collect($csvArr)->pluck('student_id')->map(fn($id) => strtolower($id))->all();
 
             $students = User::where('role', 'student')->get(['id', 'id_number']);

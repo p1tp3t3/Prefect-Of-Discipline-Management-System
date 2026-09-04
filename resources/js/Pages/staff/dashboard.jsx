@@ -4,6 +4,7 @@ import '../style.css'
 import PendingRequestList from "@/Components/list/pending-request-list";
 import AvailabilityList from "@/Components/list/availability-list";
 import { Link } from "@inertiajs/react";
+import { FileText } from "lucide-react";
 
 const NonTeachingStaffDashboard = (props) => {
     return (
@@ -15,7 +16,7 @@ const NonTeachingStaffDashboard = (props) => {
                                 <QuantityCard
                                     h='h-[9rem]'
                                     num={props.complaint}
-                                    icon='fa-file'
+                                    icon={FileText}
                                     label='Total Complaints'
                                     textColor='text-blue-700'
                                     color={{bg: 'bg-white hover:bg-black/5 transition-all'}}
@@ -26,7 +27,7 @@ const NonTeachingStaffDashboard = (props) => {
                                 <QuantityCard 
                                     h='h-[9rem]' 
                                     num={props.approved_gatepass}
-                                    icon='fa-file'
+                                    icon={FileText}
                                     label='Total Approved Gate Pass'
                                     textColor='text-blue-700'
                                     color={{bg: 'bg-white hover:bg-black/5 transition-all'}}

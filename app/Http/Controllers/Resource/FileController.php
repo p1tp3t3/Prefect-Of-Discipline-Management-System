@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Resource;
 
 use App\Http\Controllers\Controller;
+use App\Models\TeachingStaff;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpWord\Settings;
@@ -50,8 +51,147 @@ class FileController extends Controller
         }
     }
     public function downloadAccountFile($fileName) {
+        self::authorizeAccountFile($fileName);
+
         $filePath = Storage::disk('local')->path("zips/$fileName");
         return response()->download($filePath);
+    }
+
+    /**
+     * Preview a default-account file's contents. A .csv is parsed straight
+     * to rows; a .zip is opened and its entry names are listed so the
+     * caller can then request one via previewZipEntry().
+     */
+    public function previewAccountFile($fileName) {
+        self::authorizeAccountFile($fileName);
+
+        $path = Storage::disk('local')->path("zips/$fileName");
+        if (!file_exists($path)) {
+            abort(404);
+        }
+
+        $extension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+
+        if ($extension === 'csv') {
+            return response()->json([
+                'type' => 'csv',
+                'rows' => self::parseAccountCsvContents(file_get_contents($path)),
+            ]);
+        }
+
+        if ($extension === 'zip') {
+            $zip = new ZipArchive();
+            if ($zip->open($path) !== true) {
+                abort(500, 'Unable to open zip file.');
+            }
+
+            $entries = [];
+            for ($i = 0; $i < $zip->numFiles; $i++) {
+                $entries[] = $zip->getNameIndex($i);
+            }
+            $zip->close();
+
+            return response()->json(['type' => 'zip', 'entries' => $entries]);
+        }
+
+        abort(415, 'Unsupported file type.');
+    }
+
+    /**
+     * Preview one CSV entry inside a .zip default-account file.
+     */
+    public function previewAccountFileEntry($fileName, \Illuminate\Http\Request $request) {
+        self::authorizeAccountFile($fileName);
+
+        $entry = $request->query('entry');
+        if (!$entry || strtolower(pathinfo($entry, PATHINFO_EXTENSION)) !== 'csv') {
+            abort(400, 'A csv entry name is required.');
+        }
+
+        $path = Storage::disk('local')->path("zips/$fileName");
+        $zip = new ZipArchive();
+        if (!file_exists($path) || $zip->open($path) !== true || $zip->locateName($entry) === false) {
+            abort(404);
+        }
+
+        $contents = $zip->getFromName($entry);
+        $zip->close();
+
+        return response()->json([
+            'type' => 'csv',
+            'rows' => self::parseAccountCsvContents($contents),
+        ]);
+    }
+
+    /**
+     * Parses a default-account CSV (header row + id/name/program/.../password
+     * rows) and re-resolves each row's name from the live profiles table via
+     * its id_number — the CSV's own "name" column is only a snapshot from
+     * generation time and can go stale once a profile is edited.
+     */
+    private function parseAccountCsvContents($contents) {
+        $lines = array_filter(preg_split('/\r\n|\r|\n/', trim($contents ?? '')), fn($l) => $l !== '');
+        $rows = array_map('str_getcsv', $lines);
+
+        $header = array_map('trim', array_shift($rows) ?? []);
+
+        $parsedRows = array_map(function ($line) use ($header) {
+            $row = [];
+            foreach ($header as $i => $key) {
+                $row[$key] = $line[$i] ?? null;
+            }
+            return $row;
+        }, $rows);
+
+        $idNumbers = array_filter(array_column($parsedRows, 'id'));
+        $users = \App\Models\User::whereIn('id_number', $idNumbers)
+            ->with('profile')
+            ->get()
+            ->keyBy(fn($u) => strtolower($u->id_number));
+
+        return array_map(function ($row) use ($users) {
+            $user = $users->get(strtolower($row['id'] ?? ''));
+
+            $row['name'] = $user
+                ? trim("{$user->profile?->first_name} {$user->profile?->middle_name} {$user->profile?->last_name}")
+                : ($row['name'] ?? null);
+            $row['username'] = $user->username ?? ($row['username'] ?? null);
+
+            return $row;
+        }, $parsedRows);
+    }
+
+    /**
+     * A program head may only reach files belonging to their own program —
+     * super_admin/sub_admin are trusted with every file.
+     */
+    private function authorizeAccountFile($fileName) {
+        $user = auth()->user();
+
+        if (in_array($user->role, ['super_admin', 'sub_admin'])) {
+            return;
+        }
+
+        if ($user->role === 'teaching_staff') {
+            $programId = self::programHeadProgramId($user);
+
+            if ($programId !== null && preg_match('/^(student|faculty-account)-' . $programId . '-/', basename($fileName))) {
+                return;
+            }
+        }
+
+        abort(403);
+    }
+
+    /**
+     * Returns the caller's program_id if they're a program head, else null.
+     */
+    private function programHeadProgramId($user) {
+        $teachingStaff = TeachingStaff::where('user_id', $user->id)
+            ->where('position', 'program_head')
+            ->first();
+
+        return $teachingStaff?->program_id;
     }
 
     private function addFolderToZip($folder, $zip, $parentFolder = '') {
@@ -71,11 +211,42 @@ class FileController extends Controller
         }
     } 
     public function getUserAccountZipFileList() {
+        return response()->json(self::scopedAccountFiles());
+    }
+
+    /**
+     * The default-account files the current user is allowed to see: every
+     * file for super_admin/sub_admin, only their own program's for a
+     * program head. Shared by the API listing above and by controllers
+     * (e.g. AccountController) that need this as an Inertia page prop
+     * instead of a separate api call.
+     */
+    public static function scopedAccountFiles() {
+        $user = auth()->user();
+
+        if (!in_array($user->role, ['super_admin', 'sub_admin', 'teaching_staff'])) {
+            abort(403);
+        }
+
+        $programId = ($user->role === 'teaching_staff') ? (new self)->programHeadProgramId($user) : null;
+
+        if ($user->role === 'teaching_staff' && $programId === null) {
+            abort(403);
+        }
+
         $files = Storage::disk('local')->files('zips');
-        $csvFiles = array_filter($files, function($file) {
+        $csvFiles = array_filter($files, function($file) use ($programId) {
             $fileInfo = pathinfo($file, PATHINFO_EXTENSION);
 
-            return $fileInfo === 'zip' || $fileInfo === 'csv';
+            if ($fileInfo !== 'zip' && $fileInfo !== 'csv') {
+                return false;
+            }
+
+            if ($programId === null) {
+                return true;
+            }
+
+            return (bool) preg_match('/^(student|faculty-account)-' . $programId . '-/', basename($file));
         });
 
         $fileDetails = array_map(function($file) {
@@ -87,7 +258,7 @@ class FileController extends Controller
             ];
         }, $csvFiles);
 
-        return response()->json(array_values($fileDetails));
+        return array_values($fileDetails);
     }
     public function generatePDFEvidence($fileName, $placeHolderList, $output) {
 

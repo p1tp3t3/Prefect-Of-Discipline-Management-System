@@ -2,6 +2,7 @@ import ProfilePic from "../other/profile-pic"
 import { useRef, useState, useEffect, useContext } from "react"
 import AuthContext from "@/context-provider/auth-provider"
 import { motion, AnimatePresence } from "framer-motion"
+import { Plus, CalendarPlus, Eye } from "lucide-react"
 
 const DateBox = (props) => {
     const { usr } = useContext(AuthContext)
@@ -40,7 +41,7 @@ const DateBox = (props) => {
                             <div className="p-[1px] bg-gray-400 rounded-[100%]">
                                 <div className="w-[1.6rem] rounded-[100%] h-[1.6rem] bg-white text-black grid place-items-center text-[0.7em]">
                                     <div className="flex gap-[1px] items-center justify-center">
-                                        <div>2</div><i className="fa-solid fa-plus text-[0.8em]"></i>
+                                        <div>2</div><Plus size="0.8em" />
                                     </div>
                                 </div>
                             </div>
@@ -120,8 +121,8 @@ const OptionPanel = (props) => {
             >
                 <div className="w-full">
                     <ul className="p-0">
-                        <li className={l} onClick={props.event[1]}><i className="fa-solid fa-calendar-plus"></i> Schedule an Appointment</li>
-                        <li className={l} onClick={props.event[0]}><i className="fa-solid fa-eye"></i> View Scheduled Users</li>
+                        <li className={l} onClick={props.event[1]}><CalendarPlus size={14} /> Schedule an Appointment</li>
+                        <li className={l} onClick={props.event[0]}><Eye size={14} /> View Scheduled Users</li>
                     </ul>
                 </div>
             </motion.div>}

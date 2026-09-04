@@ -1,12 +1,13 @@
-import TabBtn from "@/Components/button/tab-btn";
+import TabSwitcher from "@/Components/other/tab-switcher";
 import ProfilePic from "@/Components/other/profile-pic";
 import CircleReload from "@/Components/reload/circle-reload";
 import AuthLayout from "@/Layouts/auth-layout";
-import { APIRequest } from "@/others/classes/api-req";
+import { RiskPredictionService } from "@/others/services/risk-prediction-service";
 import { getProfilePic, readableDate, readableTime } from "@/others/function";
 import { Box } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import { useEffect, useMemo, useState } from "react";
+import { ShieldHalf, Clock } from "lucide-react";
 
 /* ===============================
    MAIN COMPONENT
@@ -15,8 +16,8 @@ const StudentViolation = (props, { user = demoProps.user, student = demoProps.st
   const [option, setOption] = useState('recent_violations')
 
   const optionList = [
-    { val: 'recent_violations', label: 'Recent Violations' },
-    { val: 'analysis', label: 'Behavioural Analysis' },
+    { key: 'recent_violations', label: 'Recent Violations' },
+    { key: 'analysis', label: 'Behavioural Analysis' },
   ]
 
   return (
@@ -48,12 +49,7 @@ const StudentViolation = (props, { user = demoProps.user, student = demoProps.st
                     </div>
                 </div>
                 <div className="mt-2">
-                    <TabBtn
-                        list={optionList}
-                        option={option}
-                        handleSelect={setOption}
-                        className="text-[0.9em] py-2"
-                    />
+                    <TabSwitcher tabs={optionList} value={option} onChange={setOption} />
                     <div className="mt-6">
                         {option === "recent_violations" ? (
                             <RecentViolation violations={props.student_violations} />
@@ -151,8 +147,7 @@ const BehaviourAnalysis = ({ studentId, violation_list }) => {
   useEffect(() => {
     if(selected != '') {
       setData(null)
-      const api = new APIRequest(`/api/student/violation/${selected}/${studentId}`, 'get', null, setData)
-      api.fetchData()
+      RiskPredictionService.getViolationRiskPrediction(selected, studentId, setData)
       setViolation(violation_list.filter((e, _) => e.id == selected)[0].violation_name)
     }
   }, [selected]);
@@ -201,7 +196,7 @@ const BehaviourAnalysis = ({ studentId, violation_list }) => {
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-4">
               <div className={`h-16 w-16 rounded-full bg-white flex items-center justify-center ring-4 ${riskUI.ring}`}>
-                <i className={`fa-solid fa-shield-halved text-2xl ${riskUI.iconColor}`}></i>
+                <ShieldHalf size={24} className={riskUI.iconColor} />
               </div>
 
               <div className="space-y-1">
@@ -246,7 +241,7 @@ const BehaviourAnalysis = ({ studentId, violation_list }) => {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center">
-              <i className="fa-solid fa-clock text-slate-700"></i>
+              <Clock className="text-slate-700" />
             </div>
             <div className="font-semibold text-slate-800">Violation Timeline</div>
           </div>

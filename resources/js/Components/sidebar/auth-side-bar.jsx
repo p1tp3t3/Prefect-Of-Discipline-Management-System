@@ -1,21 +1,20 @@
 import ProfilePic from "../other/profile-pic"
-import { getProfilePic, highlightNav } from "@/others/function"
-import { useEffect } from "react"
-import ITRCSideBar from "./sidebar-body/itrc-side-bar"
-import StudentSideBar from "./sidebar-body/student-side-bar"
-import PrefectSideBar from "./sidebar-body/prefect-side-bar"
-import TeachingStaffSideBar from "./sidebar-body/teaching-staff-side-bar"
-import StaffSideBar from "./sidebar-body/staff-side-bar"
-import ParentSideBar from "./sidebar-body/parent-side-bar"
-import GuidanceSideBar from "./sidebar-body/guidance-side-bar"
+import { getProfilePic } from "@/others/function"
+import SidebarNav from "./sidebar-nav"
+import { getSidebarPages } from "./sidebar-pages"
 import "@/Responsive/sidebar-responsive.css"
 import { Link, usePage } from "@inertiajs/react"
+import { IconButton } from "@mui/material"
 import bg from "@/images/bg-pilar.jpg"
+import { ArrowLeft } from "lucide-react"
 
 const AuthSideBar = ({ usr }) => {
-  const { url, props } = usePage()
-  const appName = props.app_name || 'PilarPODHED'
-  useEffect(() => highlightNav(url), [url])
+  // Reliably eager-loaded regardless of which page's controller built
+  // `usr` — see HandleInertiaRequests — used only for the picture/name/
+  // role-label below. Page-list filtering keeps using `usr` (role-based,
+  // no relation needed) so it isn't affected either way.
+  const { auth } = usePage().props
+  const identity = auth?.user ?? usr
 
   const roleLabel = () => {
     switch (usr.role) {
@@ -26,7 +25,7 @@ const AuthSideBar = ({ usr }) => {
       case "student":
         return "Student"
       case "teaching_staff":
-        return usr.teaching_staff?.position === "program_head" ? "Program Head" : "Faculty"
+        return identity.teaching_staff?.position === "program_head" ? "Program Head" : "Faculty"
       case "non_teaching_staff":
         return "Staff"
       case "guard":
@@ -59,27 +58,37 @@ const AuthSideBar = ({ usr }) => {
 
             {/* profile */}
             <div className="z-10">
-              <ProfilePic size={2.5} />
+              <ProfilePic src={"/default-pic/pilar.png"} size={2.5} />
             </div>
 
             {/* text */}
             <div className="w-full z-10">
-              <h1 className="text-[1em] font-bold">{appName}</h1>
+              <h1 className="text-[1em] font-bold">PilarPODHED</h1>
               <h1 className="text-[0.7em]">Pilar College of Zamboanga City, Inc.</h1>
             </div>
 
-            {/* arrow button — visible only on mobile */}
-            <button
+            {/* arrow button — visible only on phone-sized screens, not tablet/desktop */}
+            <IconButton
               onClick={() => {
                 const aside = document.querySelector("aside"),
                       bg = document.querySelector("#sidebar-overlay")
                 aside.classList.toggle("max-[768px]:w-0")
                 bg.classList.toggle('hidden')
               }} // define this function to close/collapse sidebar
-              className="z-20 md:hidden absolute right-3 top-1/2 -translate-y-1/2 text-white hover:text-gray-300 transition"
+              sx={{
+                position: "absolute",
+                right: "0.75rem",
+                top: "50%",
+                transform: "translateY(-50%)",
+                zIndex: 20,
+                color: "#fff",
+                transition: "color 0.2s",
+                "&:hover": { color: "#d1d5db" },
+                "@media (min-width:640px)": { display: "none" },
+              }}
             >
-              <i className="fa-solid fa-arrow-left text-[1.2em]"></i>
-            </button>
+              <ArrowLeft size="1.2em" />
+            </IconButton>
           </div>
 
 
@@ -89,11 +98,11 @@ const AuthSideBar = ({ usr }) => {
             <Link href={`/profile/${usr.username}`}>
               <div className="w-full flex items-center gap-3 py-2">
                 <ProfilePic
-                  src={getProfilePic(usr.profile?.profile_picture, usr.profile?.sex)}
+                  src={getProfilePic(identity.profile?.profile_picture, identity.profile?.sex)}
                   size={2.5}
                 />
                 <div>
-                  <h1 className="text-[1.1em] font-bold">{usr.profile?.first_name}</h1>
+                  <h1 className="text-[1.1em] font-bold">{identity.profile?.first_name}</h1>
                   <h1 className="text-[0.8em]">{roleLabel()}</h1>
                 </div>
               </div>
@@ -105,7 +114,7 @@ const AuthSideBar = ({ usr }) => {
         <div>
           <div className="grid gap-2 overflow-hidden overflow-y-auto">
             <h1 className="px-10 text-gray-400 text-[0.9em]">Menu</h1>
-            <SidebarBody usr={usr} />
+            <SidebarNav list={getSidebarPages(usr)} />
           </div>
         </div>
       </div>
@@ -121,27 +130,6 @@ const AuthSideBar = ({ usr }) => {
     ></div>
     </>
   )
-}
-
-const SidebarBody = ({ usr }) => {
-  switch (usr.role) {
-    case "super_admin":
-      return <ITRCSideBar usr={usr} />
-    case "sub_admin":
-      return <PrefectSideBar />
-    case "student":
-      return <StudentSideBar />
-    case "teaching_staff":
-      return <TeachingStaffSideBar isProgramHead={usr.teaching_staff?.position === "program_head"} />
-    case "non_teaching_staff":
-      return <StaffSideBar isGuard={false} />
-    case "guard":
-      return <StaffSideBar isGuard={true} />
-    case "guidance":
-      return <GuidanceSideBar />
-    case "parent":
-      return <ParentSideBar />
-  }
 }
 
 export default AuthSideBar

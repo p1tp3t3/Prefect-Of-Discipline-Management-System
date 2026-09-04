@@ -1,5 +1,6 @@
 import { Link } from "@inertiajs/react"
-import CircleReload from "../reload/circle-reload"
+import ListSkeleton from "../reload/list-skeleton"
+import { Search } from "lucide-react"
 
 const LabelList = (props) => {
 
@@ -30,11 +31,11 @@ const LabelList = (props) => {
                             </div>
                         )
                     :<div className="w-full text-[0.9em] text-center py-3 text-gray-600">
-                        <b><i className="fa-solid fa-search"></i> {(props.default) ? props.default : "User Not Found"}</b>
+                        <b><Search size={14} /> {(props.default) ? props.default : "User Not Found"}</b>
                     </div>)
                     :
                     <div className="flex justify-center items-center w-full">
-                        <CircleReload size={2.5} />
+                        <ListSkeleton rows={3} />
                     </div>)}
             </div>
         </div>

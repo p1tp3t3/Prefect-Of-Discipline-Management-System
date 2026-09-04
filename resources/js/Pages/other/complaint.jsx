@@ -2,15 +2,16 @@ import AuthLayout from "@/Layouts/auth-layout"
 import { useEffect, useState } from "react"
 import IssueComplaintModal from "@/Components/modal/submission-form/issue-complaint-modal"
 import ComplaintList from "@/Components/list/complaint-list"
-import Reload from "@/Components/reload/reload"
+import { useReload } from "@/context-provider/reload-provider"
 import { change } from "@/others/function"
 import ViewComplaintModal from "@/Components/modal/view/view-complaint-modal"
 import { Head, router } from "@inertiajs/react"
 import Btn from "@/Components/button/normal-btn"
-import TabBtn from "@/Components/button/tab-btn"
+import TabSwitcher from "@/Components/other/tab-switcher"
 import { Button, Paper } from "@mui/material"
 import { DataGrid } from '@mui/x-data-grid';
 import QuickFilteringGrid from "@/Components/text-component"
+import { List, XCircle, PauseCircle, RotateCw } from "lucide-react"
 
 
 const Complaint = (props) => {
@@ -26,61 +27,20 @@ const Complaint = (props) => {
                 complaint_incident: '',
                 complaint_possible_offense: [],
                 complaint_description: '',
-            }),
-          [reload, setReload] = useState(false),
-          [reloadType, setReloadType] = useState(""),
-          [reloadLabel, setReloadLabel] = useState("")
+            })
 
+    const { loadRegister } = useReload()
     const [choose, setChoose] = useState(url.get("status") || "all")
-    
-    
-    const isReload = () => {
-        return reload ? "opacity-1 z-50" : "opacity-0 z-[-1]";
-    };
+
     const handleChange = (e) => {
         change(e, setData)
     }
-    const loadRegister = (r, t, l) => {
-        setReload(r);
-        setReloadType(t);
-        setReloadLabel(l);
-    };
-    const optionTab = [{
-      val: "all",
-      label: "All Complaints",
-      icon: "list", // 📋 icon
-      colorHighlight: "bg-blue-600 text-white",
-      borderColor: "border-blue-600",
-      textColor: "text-blue-600",
-      hover: "hover:bg-blue-100",
-    },{
-      val: "rejected",
-      label: "Rejected",
-      icon: "circle-xmark", // ⏸️ icon
-      colorHighlight: "bg-red-500 text-white",
-      borderColor: "border-red-500",
-      textColor: "text-red-500",
-      hover: "hover:bg-red-100",
-    },
-    {
-      val: "pending",
-      label: "Pending",
-      icon: "circle-pause", // ⏸️ icon
-      colorHighlight: "bg-yellow-500 text-white",
-      borderColor: "border-yellow-500",
-      textColor: "text-yellow-500",
-      hover: "hover:bg-yellow-100",
-    },
-    {
-      val: "ongoing",
-      label: "Ongoing",
-      icon: "rotate-right", // 🔄 icon
-      colorHighlight: "bg-orange-500 text-white",
-      borderColor: "border-orange-500",
-      textColor: "text-orange-500",
-      hover: "hover:bg-orange-100",
-    },
-  ];
+    const optionTab = [
+      { key: "all", label: "All Complaints", icon: List },
+      { key: "rejected", label: "Rejected", icon: XCircle },
+      { key: "pending", label: "Pending", icon: PauseCircle },
+      { key: "ongoing", label: "Ongoing", icon: RotateCw },
+    ];
     const setId = (id) => {
         setComplainantId(id)
         openViewComplaint(true)
@@ -96,13 +56,7 @@ const Complaint = (props) => {
     return (
         <>
         <Head title="Complaint" />
-        <Reload
-            transition={isReload()}
-            type={reloadType}
-            label={reloadLabel}
-            onClose={setReload}
-        />
-        <ViewComplaintModal 
+        <ViewComplaintModal
             close={viewComplaint} 
             closeModal={openViewComplaint} 
             pd={['px-10', 'py-7']}
@@ -143,12 +97,7 @@ const Complaint = (props) => {
                     : ''}
                 </div>
                 <div>
-                    <TabBtn
-                        list={optionTab}
-                        option={choose}
-                        handleSelect={handleSelect}
-                        className="h-[2.2rem]"
-                    />
+                    <TabSwitcher tabs={optionTab} value={choose} onChange={handleSelect} />
                 </div>
                 {/* Complaint List */}
                 <div className="w-full bg-white rounded-md shadow-black/20 shadow-sm overflow-x-auto">

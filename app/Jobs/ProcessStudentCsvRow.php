@@ -60,17 +60,23 @@ class ProcessStudentCsvRow implements ShouldQueue
             return;
         }
 
+        $program = Program::whereRaw('LOWER(name) = ?', [strtolower(trim($row['program'] ?? ''))])->first();
+
+        if (!$program) {
+            $this->recordResult('error', $idNumber, $fullName, "Program '{$row['program']}' does not match any existing program name.");
+            return;
+        }
+
         DB::beginTransaction();
         try {
-            $register = new RegisteredUserController();
             $existingUser = User::where('id_number', $idNumber)->first();
 
             if ($existingUser) {
                 $username = $existingUser->username;
                 $hashedPassword = $existingUser->password;
-                $plainPassword = $this->getOldPassword($idNumber, $row);
+                $plainPassword = $this->getOldPassword($idNumber, $program, $row['year_level'] ?? null);
             } else {
-                $username = $register->generateUsername($row['first_name']);
+                $username = generate_username($row['first_name']);
                 $plainPassword = random_int(10000000, 99999999);
                 $hashedPassword = Hash::make($plainPassword);
             }
@@ -93,24 +99,25 @@ class ProcessStudentCsvRow implements ShouldQueue
                 'first_name' => ucwords($row['first_name']),
                 'middle_name' => ucwords($row['middle_name']),
                 'last_name' => ucwords($row['last_name']),
+                'suffix' => (empty($row['suffix'])) ? null : trim($row['suffix']),
                 'sex' => strtolower($row['sex']),
             ]);
 
             UserPermission::updateOrInsert(
                 ['user_id' => $user->id],
-                $register->getUserAccessField([], 'student')
+                get_user_access_field([], 'student')
             );
 
             Enrollment::updateOrInsert(
                 [
                     'student_id' => $user->id,
-                    'program_id' => $row['program'],
+                    'program_id' => $program->id,
                     'school_year' => $row['school_year'],
                 ],
                 [
                     'semester' => $row['semester'] ?? 1,
                     'year_level' => $row['year_level'],
-                    'enrolled_at' => now(),
+                    'enrolled_at' => $row['enrolled_at'],
                 ]
             );
 
@@ -129,13 +136,11 @@ class ProcessStudentCsvRow implements ShouldQueue
 
             DB::commit();
 
-            $programName = Program::where('id', $row['program'])->value('name') ?? 'unknown';
-
             $this->recordResult('success', $idNumber, $fullName, null, [
                 'id' => $idNumber,
                 'name' => $fullName,
-                'program_id' => $row['program'],
-                'program_name' => $programName,
+                'program_id' => $program->id,
+                'program_name' => $program->name,
                 'year_level' => $row['year_level'],
                 'username' => $username,
                 'password' => $plainPassword,
@@ -183,15 +188,14 @@ class ProcessStudentCsvRow implements ShouldQueue
 
     /** Mirrors ProcessUserAccountGenerationCSV::getOldPasswordFromZip, using a
      *  per-job temp dir so concurrent batch workers don't collide. */
-    private function getOldPassword($idNumber, $row)
+    private function getOldPassword($idNumber, $program, $yearLevel)
     {
         $randomPassword = (string) random_int(10000000, 99999999);
         $extractDir = storage_path('app/tmp_zip_read_' . Str::random(12));
 
         try {
-            $programId = $row['program'] ?? null;
-            $yearLevel = $row['year_level'] ?? null;
-            $programSlug = strtoupper(Str::slug(Program::where('id', $programId)->value('name') ?? 'unknown', '-'));
+            $programId = $program->id;
+            $programSlug = strtoupper(Str::slug($program->name, '-'));
 
             $zipPath = storage_path("app/private/zips/student-{$programId}-{$programSlug}.zip");
             $csvName = "student-account-{$programId}-{$programSlug}-year-{$yearLevel}.csv";

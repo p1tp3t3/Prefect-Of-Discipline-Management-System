@@ -1,16 +1,17 @@
 import { DataGrid } from "@mui/x-data-grid"
 import Box from "@mui/material/Box"
 import { getProfilePic, getYearLevel, readableDate, readableTime, toTitleCase } from "@/others/function"
-import CircleReload from "../reload/circle-reload"
+import ListSkeleton from "../reload/list-skeleton"
 import ProfilePic from "../other/profile-pic"
 import { router } from "@inertiajs/react"
+import { FolderOpen } from "lucide-react"
 
 const IncidentReportList = ({ list }) => {
     if (list == null) {
         return (
             <div className="w-full bg-white rounded-md shadow-md p-4">
                 <div className="flex justify-center py-12">
-                    <CircleReload size={3} />
+                    <ListSkeleton rows={5} />
                 </div>
             </div>
         )
@@ -20,7 +21,7 @@ const IncidentReportList = ({ list }) => {
         return (
             <div className="w-full bg-white rounded-md shadow-md p-4">
                 <div className="py-12 text-center text-gray-500">
-                    <i className="fa-solid fa-folder-open text-[2.8em] mb-2 opacity-60"></i>
+                    <FolderOpen size="2.8em" className="mb-2 opacity-60" />
                     <p>No Reports Found</p>
                 </div>
             </div>
@@ -30,6 +31,7 @@ const IncidentReportList = ({ list }) => {
     const rows = list.data.map((e, index) => ({
         id: e.id ?? `${list.from + index}`,
         index: list.from + index,
+        student_id: e.user?.id_number,
         student: e.user,
         complaint: e.complaint,
     }))
@@ -43,6 +45,12 @@ const IncidentReportList = ({ list }) => {
             renderCell: (params) => (
                 <span className="text-[0.8em]">{params.value}.</span>
             ),
+        },
+        {
+            field: "student_id",
+            headerName: "Student ID",
+            width: 120,
+            sortable: false,
         },
         {
             field: "student_col",
@@ -71,10 +79,6 @@ const IncidentReportList = ({ list }) => {
                                 {toTitleCase(
                                     `${student?.profile?.first_name || ""} ${student?.profile?.middle_name || ""} ${student?.profile?.last_name || ""}`
                                 )}
-                                <span className="text-gray-500">
-                                    {" "}
-                                    ({student?.id_number})
-                                </span>
                             </p>
                             <p className="text-[0.75em] text-gray-600">
                                 {[programName, roleDetail].filter(Boolean).join(" · ") || "-"}
@@ -124,10 +128,11 @@ const IncidentReportList = ({ list }) => {
     }
 
     return (
-        <div className="w-full bg-white rounded-md shadow-md p-4">
+        <div className="w-full bg-white rounded-md shadow-md p-4 overflow-x-auto">
             <Box
                 sx={{
                     width: "100%",
+                    minWidth: "1000px",
                     "& .MuiDataGrid-root": {
                         border: "none",
                     },

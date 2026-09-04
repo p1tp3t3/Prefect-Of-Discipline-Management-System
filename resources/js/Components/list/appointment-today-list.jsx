@@ -1,6 +1,7 @@
 import { getProfilePic, readableDate, readableTime, showUserType } from "@/others/function"
 import ProfilePic from "../other/profile-pic"
-import CircleReload from "../reload/circle-reload"
+import ListSkeleton from "../reload/list-skeleton"
+import { AlertCircle, Clock } from "lucide-react"
 
 const AppointmentTodayList = ({ list = null }) => {
 
@@ -19,14 +20,14 @@ const AppointmentTodayList = ({ list = null }) => {
                 <div className="text-[1em] text-gray-500 w-full grid place-items-center h-full">
                     <div className="grid place-items-center">
                         <div className="text-[4em]">
-                            <i className="fa-solid fa-circle-exclamation"></i>
+                            <AlertCircle size="1em" />
                         </div>
                         <div>No Appointments Today</div>
                     </div>
                 </div>
                 :
                 <div className="text-[1em] text-gray-500 w-full grid place-items-center h-full">
-                    <CircleReload size={3} />
+                    <ListSkeleton rows={4} />
                 </div>}
             </div>
         </div>
@@ -61,7 +62,7 @@ const Row = ({ data }) => {
                 {/* Right: Time */}
                 <div className="flex items-center">
                     <span className="text-[0.75em] bg-blue-50 text-blue-700 px-3 py-1 rounded-full border border-blue-200 shadow-sm flex items-center gap-1">
-                        <i className="fa-solid fa-clock text-blue-700"></i>
+                        <Clock size={12} className="text-blue-700" />
                         {readableTime(data.date_time_appoint)}
                     </span>
                 </div>

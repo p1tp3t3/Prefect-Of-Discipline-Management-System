@@ -31,7 +31,7 @@ const AlertModal = ({
     }
     return (
         <motion.div
-            className="fixed z-50 inset-0 grid place-items-center"
+            className="fixed z-[200] inset-0 grid place-items-center"
             style={{ pointerEvents: close ? 'auto' : 'none' }}
             initial={false}
             animate={{ opacity: close ? 1 : 0, backgroundColor: close ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0)' }}
