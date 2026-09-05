@@ -326,6 +326,121 @@ class ComplaintController extends Controller
     }
 
 
+    /**
+     * Lets the complainant edit their own complaint exactly once, and only
+     * while it's still pending (before the prefect has acted on it).
+     * Subjects are replaced to match the new selection; evidence is
+     * additive (existing files are kept, new ones are appended) so a
+     * partial edit can't accidentally wipe out prior uploads.
+     */
+    public function updateComplaint(\App\Http\Requests\Complaint\UpdateComplaintRequest $request, $id) {
+        DB::beginTransaction();
+        try {
+            $complaint = Complaint::where('id', $id)->first();
+
+            if (!$complaint) {
+                return response()->json(['message' => 'Complaint not found.'], 404);
+            }
+            if ($complaint->complainant_id !== auth()->id()) {
+                return response()->json(['message' => 'You can only edit a complaint you filed yourself.'], 403);
+            }
+            if ($complaint->complaint_status !== 'pending') {
+                return response()->json(['message' => 'This complaint can no longer be edited.'], 400);
+            }
+            if ($complaint->edited_at !== null) {
+                return response()->json(['message' => 'You have already used your one edit for this complaint.'], 400);
+            }
+
+            $complaint->update([
+                'incident_id' => $request->incident_id,
+                'complaint_description' => $request->complaint_description,
+                'edited_at' => now(),
+            ]);
+
+            $newSubjectIds = collect($request->student_subjects)->map(fn ($s) => (int) $s);
+            ComplaintSubject::where('complaint_id', $id)
+                ->whereNotIn('student_id', $newSubjectIds)
+                ->delete();
+            $existingSubjectIds = ComplaintSubject::where('complaint_id', $id)->pluck('student_id');
+            foreach ($newSubjectIds->diff($existingSubjectIds) as $studentId) {
+                ComplaintSubject::insert(['complaint_id' => $id, 'student_id' => $studentId]);
+            }
+
+            $evidence = array_filter($request->file('evidence') ?? []);
+            if (!empty($evidence)) {
+                $complaintFolderPath = storage_path("app/private/complaints/complaint-{$complaint->complaint_number}");
+                $evidencesFolder = "{$complaintFolderPath}/evidences";
+                File::ensureDirectoryExists($evidencesFolder);
+
+                $existing = $complaint->complaint_evidences ? json_decode($complaint->complaint_evidences, true) : [];
+                $i = count($existing) + 1;
+
+                foreach ($evidence as $e) {
+                    $extension = $e->getClientOriginalExtension();
+                    $type = str_contains($e->getMimeType(), 'image') ? 'pic' : 'vid';
+                    $fileName = "{$i}-{$complaint->complaint_number}.{$extension}";
+                    $e->move($evidencesFolder, $fileName);
+                    $existing[] = ['type' => $type, 'file' => $fileName];
+                    $i++;
+                }
+                Complaint::where('id', $id)->update(['complaint_evidences' => json_encode($existing)]);
+            }
+
+            ActionLog::create([
+                'user_id' => auth()->id(),
+                'action_type' => 'complaint',
+                'details' => "edits their own complaint (#{$complaint->complaint_number})",
+            ]);
+
+            DB::commit();
+            return response()->json([
+                'complaint' => self::allUserComplaint()
+            ]);
+        } catch (Exception $e) {
+            DB::rollBack();
+            return response()->json(['message' => 'Error updating complaint', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Lets the complainant withdraw their own complaint. This is a soft
+     * delete, not a hard delete — the row stays, gets funneled into the
+     * Archive page the same way a prefect's rejection does (archived_at
+     * set 5 years out, same retention convention as cancelComplaint()),
+     * so the prefect can still see it.
+     */
+    public function revokeComplaint($id) {
+        $complaint = Complaint::with(['user.profile', 'subject.profile'])
+                              ->where('id', $id)
+                              ->first();
+
+        if (!$complaint) {
+            return response()->json(['message' => 'Complaint not found.'], 404);
+        }
+        if ($complaint->complainant_id !== auth()->id()) {
+            return response()->json(['message' => 'You can only revoke a complaint you filed yourself.'], 403);
+        }
+        if (!in_array($complaint->complaint_status, ['pending', 'ongoing'])) {
+            return response()->json(['message' => 'This complaint can no longer be revoked.'], 400);
+        }
+
+        $complaint->update([
+            'complaint_status' => 'revoked',
+            'revoked_at' => now(),
+            'archived_at' => Carbon::parse(now())->addYears(5),
+        ]);
+
+        ActionLog::create([
+            'user_id' => auth()->id(),
+            'action_type' => 'complaint',
+            'details' => 'revokes their own complaint against ' . $this->formatComplaintSubjectNames($complaint)
+        ]);
+
+        return response()->json([
+            'complaint' => self::isPrefect() ? self::allComplaints() : self::allUserComplaint()
+        ]);
+    }
+
     public function actionMultipleSelect(BulkComplaintActionRequest $request)
     {
         $ids = $request->ids; // array of complaint IDs
@@ -504,7 +619,7 @@ class ComplaintController extends Controller
         $data = Complaint::where('complainant_id', auth()->user()->id);
         $status = isset($_GET['status']) ? $_GET['status'] : null;
 
-        if(isset($_GET['status']) && in_array($_GET['status'], ['pending', 'ongoing', 'rejected', 'resolved'])) {
+        if(isset($_GET['status']) && in_array($_GET['status'], ['pending', 'ongoing', 'rejected', 'resolved', 'revoked'])) {
             $data = $data->where('complaint_status', $status)
                            ->latest('created_at');
         } else {
@@ -602,6 +717,10 @@ class ComplaintController extends Controller
         return $this->generateSequenceCode(Complaint::class, 'complaint_number');
     }
 
+    /**
+     * One complaint = one form, listing every complainee together —
+     * $newComplaint must have complaintSubject.user.profile eager-loaded.
+     */
     public function getComplaintDocumentField($newComplaint, $summary)
     {
         // Determine complainant name dynamically
@@ -620,19 +739,25 @@ class ComplaintController extends Controller
             $complainantName = $newComplaint->complainant_name ?? 'N/A';
         }
 
-        $subjectProfile = $newComplaint->subject?->profile;
+        $subjects = ($newComplaint->complaintSubject ?? collect())->map(function ($cs) {
+            $profile = $cs->user?->profile;
+            return [
+                'name' => trim(
+                    ($profile->first_name ?? '') . ' ' .
+                    ($profile->middle_name ?? '') . ' ' .
+                    ($profile->last_name ?? '')
+                ),
+                'user_type' => strtoupper($cs->user?->role ?? 'STUDENT'),
+            ];
+        })->values()->all();
 
         return [
             'id' => $newComplaint->id,
+            'complaint_number' => $newComplaint->complaint_number,
             'case_number' => $newComplaint->case_number,
             'complainant_name' => $complainantName,
             'complainant_user_type' => strtoupper(optional($newComplaint->user)->role ?? 'EXTERNAL'),
-            'subject_name' => trim(
-                ($subjectProfile->first_name ?? '') . ' ' .
-                ($subjectProfile->middle_name ?? '') . ' ' .
-                ($subjectProfile->last_name ?? '')
-            ),
-            'subject_user_type' => strtoupper(optional($newComplaint->subject)->role ?? 'STUDENT'),
+            'subjects' => $subjects,
             'incident' => $newComplaint->violation?->violation_name,
             'incident_summary' => $summary,
             'date_issued' => Carbon::parse($newComplaint->created_at)->format('F j, Y'),

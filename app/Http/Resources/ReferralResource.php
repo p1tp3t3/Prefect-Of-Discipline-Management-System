@@ -15,12 +15,14 @@ class ReferralResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'program_head_id' => $this->program_head_id,
+            'teaching_staff_id' => $this->teaching_staff_id,
             'referral_number' => $this->referral_number,
             'reason_description' => $this->reason_description,
             'referral_status' => $this->referral_status,
             'rejected_reason' => $this->rejected_reason,
             'rejected_at' => $this->rejected_at,
+            'revoked_at' => $this->revoked_at,
+            'edited_at' => $this->edited_at,
             'send_to_guidance' => $this->send_to_guidance,
             'confirmed_at' => $this->confirmed_at,
             'archived_at' => $this->archived_at,

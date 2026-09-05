@@ -109,9 +109,13 @@ class ViolationController extends Controller
 
         try {
             $subjects = json_decode($request->subjects, true);
+            $summary = $request->incident_summary;
 
             if (!is_array($subjects) || empty($subjects)) {
                 return response()->json(['message' => 'No subjects provided.'], 400);
+            }
+            if (empty(trim((string) $summary))) {
+                return response()->json(['message' => 'Please provide a summary of the incident.'], 400);
             }
 
             // Fetch complaint
@@ -121,30 +125,23 @@ class ViolationController extends Controller
             $complaintId = $complaint->first()->id;
             $complaintNumber = $complaint->first()->complaint_number;
             $complaintFolder = storage_path("app/private/complaints/complaint-{$complaintNumber}");
-            $subjectsFolder = "{$complaintFolder}/subjects";
 
             // Ensure folder exists
-            if (!File::isDirectory($subjectsFolder)) {
-                File::makeDirectory($subjectsFolder, 0777, true, true);
+            if (!File::isDirectory($complaintFolder)) {
+                File::makeDirectory($complaintFolder, 0777, true, true);
             }
 
             foreach ($subjects as $sub) {
 
                 $studentId = $sub['student_id'];
-                $summary   = $sub['summary'];
 
                 // ----------------------------------------------------------------------
                 // 1. SAVE or UPDATE ComplaintSubject
                 // ----------------------------------------------------------------------
-                ComplaintSubject::updateOrInsert(
-                    [
-                        'complaint_id' => $complaintId,
-                        'student_id'   => $studentId,
-                    ],
-                    [
-                        'incident_summary' => $summary,
-                    ]
-                );
+                ComplaintSubject::firstOrCreate([
+                    'complaint_id' => $complaintId,
+                    'student_id'   => $studentId,
+                ]);
                 // ----------------------------------------------------------------------
                 // 2. DELETE OLD OFFENSES for this student (fresh update)
                 // ----------------------------------------------------------------------
@@ -180,17 +177,7 @@ class ViolationController extends Controller
                 }
 
                 // ----------------------------------------------------------------------
-                // 4. Generate complaint PDF file per student
-                // ----------------------------------------------------------------------
-                $filePath = "{$subjectsFolder}/complaint-student-{$studentId}-{$complaintNumber}.pdf";
-
-                $field = (new ComplaintController())->getComplaintDocumentField($complaint->first(), $summary);
-                Pdf::loadView('pdf.complaint-subject', $field)->save($filePath);
-
-                $generatedFiles[] = $filePath;
-
-                // ----------------------------------------------------------------------
-                // 5. Log Action
+                // 4. Log Action
                 // ----------------------------------------------------------------------
                 ActionLog::create([
                     'user_id' => auth()->user()->id,
@@ -200,12 +187,26 @@ class ViolationController extends Controller
             }
 
             // ----------------------------------------------------------------------
+            // 5. Generate ONE complaint PDF covering every subject — one form,
+            //    not one per complainee.
+            // ----------------------------------------------------------------------
+            $filePath = "{$complaintFolder}/complaint-{$complaintNumber}.pdf";
+
+            $complaintWithSubjects = Complaint::with(['user.profile', 'subject.profile', 'complaintSubject.user.profile'])
+                ->find($complaintId);
+            $field = (new ComplaintController())->getComplaintDocumentField($complaintWithSubjects, $summary);
+            Pdf::loadView('pdf.complaint-subject', $field)->save($filePath);
+
+            $generatedFiles[] = $filePath;
+
+            // ----------------------------------------------------------------------
             // 6. Update Complaint to RESOLVED
             // ----------------------------------------------------------------------
             $complaint->update([
                 'complaint_status' => 'resolved',
                 'offense_issued_at' => now(),
                 'archived_at' => now()->addYears(5),
+                'incident_summary' => $summary,
             ]);
 
             DB::commit();
@@ -252,6 +253,13 @@ class ViolationController extends Controller
             ->limit(1)
     )
     ->get();
+
+    // Prefer the complaint-level summary (one shared narrative per
+    // complaint); fall back to this subject's own for complaints resolved
+    // before the summary moved to the complaint.
+    $incidents->each(function ($cs) {
+        $cs->incident_summary = $cs->complaint->incident_summary ?? $cs->incident_summary;
+    });
 
 return response()->json($incidents);
 

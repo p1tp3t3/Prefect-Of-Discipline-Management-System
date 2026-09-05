@@ -69,7 +69,7 @@ class ReferralController extends Controller
             }
 
             $field = [
-                'program_head_id' => $request->referrer_id,
+                'teaching_staff_id' => $request->referrer_id,
                 'reason_description' => $request->referral_reason,
                 'referral_number' => $this->generateSequenceCode(Referral::class, 'referral_number'),
             ];
@@ -190,7 +190,7 @@ class ReferralController extends Controller
             'referredStudent.program'
         ]);
 
-        if(auth()->user()->role != 'sub_admin')   $referrals->where('program_head_id', auth()->user()->id);
+        if(auth()->user()->role != 'sub_admin')   $referrals->where('teaching_staff_id', auth()->user()->id);
 
         // Filter by confirmation status
         if ($status === 'approve') {
@@ -243,6 +243,91 @@ class ReferralController extends Controller
         );
         return self::getAllReferral();
     }
+    /**
+     * Lets the referrer withdraw their own referral. Soft delete, not a
+     * hard delete — same archived_at retention convention as the prefect's
+     * own reject (destroy()) uses, so it still shows up for the prefect via
+     * the Archive page instead of disappearing outright.
+     */
+    public function revokeReferral($id) {
+        $referral = Referral::where('id', $id)->first();
+
+        if (!$referral) {
+            return response()->json(['message' => 'Referral not found.'], 404);
+        }
+        if ($referral->teaching_staff_id !== auth()->id()) {
+            return response()->json(['message' => 'You can only revoke a referral you filed yourself.'], 403);
+        }
+        if ($referral->referral_status !== 'pending' || $referral->confirmed_at !== null) {
+            return response()->json(['message' => 'This referral can no longer be revoked.'], 400);
+        }
+
+        $referral->update([
+            'referral_status' => 'revoked',
+            'revoked_at' => now(),
+            'archived_at' => Carbon::parse(now())->addYears(5),
+        ]);
+
+        ActionLog::create([
+            'user_id' => auth()->id(),
+            'action_type' => 'referral',
+            'details' => "revokes their own referral (#{$referral->referral_number})",
+        ]);
+
+        return self::getAllReferral();
+    }
+
+    /**
+     * Lets the referrer edit their own referral exactly once, and only
+     * while it's still pending (before the prefect has approved/rejected
+     * it).
+     */
+    public function updateReferral(\App\Http\Requests\Referral\UpdateReferralRequest $request, $id) {
+        $referral = Referral::where('id', $id)->first();
+
+        if (!$referral) {
+            return response()->json(['message' => 'Referral not found.'], 404);
+        }
+        if ($referral->teaching_staff_id !== auth()->id()) {
+            return response()->json(['message' => 'You can only edit a referral you filed yourself.'], 403);
+        }
+        if ($referral->referral_status !== 'pending' || $referral->confirmed_at !== null) {
+            return response()->json(['message' => 'This referral can no longer be edited.'], 400);
+        }
+        if ($referral->edited_at !== null) {
+            return response()->json(['message' => 'You have already used your one edit for this referral.'], 400);
+        }
+
+        DB::beginTransaction();
+        try {
+            $referral->update([
+                'reason_description' => $request->referral_reason,
+                'edited_at' => now(),
+            ]);
+
+            $newStudentIds = collect($request->referred_students)->map(fn ($s) => (int) $s);
+            ReferralReferredStudent::where('referral_id', $id)
+                ->whereNotIn('student_id', $newStudentIds)
+                ->delete();
+            $existingStudentIds = ReferralReferredStudent::where('referral_id', $id)->pluck('student_id');
+            foreach ($newStudentIds->diff($existingStudentIds) as $studentId) {
+                ReferralReferredStudent::insert(['referral_id' => $id, 'student_id' => $studentId]);
+            }
+
+            ActionLog::create([
+                'user_id' => auth()->id(),
+                'action_type' => 'referral',
+                'details' => "edits their own referral (#{$referral->referral_number})",
+            ]);
+
+            DB::commit();
+            return self::getAllReferral();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json(['message' => 'Error updating referral', 'error' => $e->getMessage()], 500);
+        }
+    }
+
     public function destroy($id)  {
         $referral = Referral::find($id);
         if ($referral) {

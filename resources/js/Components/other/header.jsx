@@ -12,6 +12,7 @@ import AuthContext from "@/context-provider/auth-provider";
 import { Link, usePage } from "@inertiajs/react";
 import { Broadcast } from "@/others/classes/broadcast-cofiguration";
 import { IconButton } from "@mui/material";
+import { ChatService } from "@/others/services/chat-service";
 
 const AuthHeader = (props) => {
   const [pane, setOpenPanelId] = useState(null),
@@ -20,6 +21,7 @@ const AuthHeader = (props) => {
     [notifList, setNotifList] = useState(null),
     [notifCount, setNotifCount] = useState(0),
     [callIn, openCallIn] = useState(false),
+    [chatUnread, setChatUnread] = useState(0),
     [size, setSize] = useState(null);
 
   const { usr, toast, toastLabel, toastIcon, openToast } =
@@ -71,6 +73,17 @@ const AuthHeader = (props) => {
       },
       (err) => console.log(err)
     );
+  }, []);
+
+  useEffect(() => {
+    ChatService.getUnreadCount((e) => setChatUnread(e.unread_count), () => {});
+
+    new Broadcast(
+      'private',
+      'chat.' + props.user.id,
+      'MessageSent',
+      (e) => setChatUnread(e.unread_count)
+    ).configure('enable chat badge');
   }, []);
 
   const handleTogglePanel = (panelId) => {
@@ -150,6 +163,16 @@ const AuthHeader = (props) => {
                   <i className="fa-solid fa-phone"></i>
                 </IconButton>
               )}
+              <a href="/chat">
+                <IconButton sx={btnSx}>
+                  <i className="fa-solid fa-comment"></i>
+                  {(chatUnread != 0) && (
+                    <div className="absolute top-1 right-1 w-[1.2rem] h-[1.2rem] text-[0.6em] grid place-items-center bg-red-600 text-white rounded-full">
+                      {chatUnread > 9 ? "9+" : chatUnread}
+                    </div>
+                  )}
+                </IconButton>
+              </a>
               <div className="h-full grid">
                 <IconButton
                   sx={pane == "notif" ? activeBtnSx : btnSx}

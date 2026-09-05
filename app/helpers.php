@@ -130,6 +130,7 @@ if (!function_exists('get_user_access_field')) {
             case 'teaching_staff':
                 return array_merge($data, [
                     'allow_complaint' => 1,
+                    'allow_referral' => 1,
                     'allow_gatepass' => 1,
                 ]);
             case 'parent':

@@ -13,6 +13,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Modules\Appointment\AppointmentController;
 use App\Http\Controllers\Modules\Report\ArchiveController;
+use App\Http\Controllers\Modules\Chat\ChatController;
 use App\Http\Controllers\Modules\Family\FamilyController;
 use App\Http\Controllers\Modules\System\MaintenanceController;
 use App\Http\Controllers\Modules\Family\ParentController;
@@ -202,6 +203,14 @@ Route::middleware(['auth', 'activate', 'user-activity'])->group(function() {
           ->name('auth.dashboard');
      Route::get('/dashboard/active-users', [DashboardController::class, 'getActiveUsers']);
 
+     Route::get('/chat', [ChatController::class, 'index']);
+     Route::get('/chat/thread/{userId}', [ChatController::class, 'getThread']);
+     Route::post('/chat/send', [ChatController::class, 'store']);
+     Route::post('/chat/message/{id}/unsend', [ChatController::class, 'unsendMessage']);
+     Route::post('/chat/message/{id}/edit', [ChatController::class, 'editMessage']);
+     Route::get('/chat/message/{id}/history', [ChatController::class, 'getEditHistory']);
+     Route::get('/chat/unread-count', [ChatController::class, 'unreadCount']);
+
      Route::get('/appointment', [AppointmentController::class, 'index']);
      Route::post('/prefect/appointment/req/get/{reqId}', [AppointmentController::class, 'getReqList']);
 
@@ -216,6 +225,8 @@ Route::middleware(['auth', 'activate', 'user-activity'])->group(function() {
      Route::get('/complaint', [ComplaintController::class, 'index']);
      Route::post('/complaint/create', [ComplaintController::class, 'store']);
      Route::post('/complaint/verify/{id}/cancel', [ComplaintController::class, 'cancelComplaint']);
+     Route::post('/complaint/{id}/revoke', [ComplaintController::class, 'revokeComplaint']);
+     Route::post('/complaint/{id}/edit', [ComplaintController::class, 'updateComplaint']);
      Route::post('/complaint/verify/{id}/confirm', [ComplaintController::class, 'confirmComplaint']);
      Route::post('/complaint/select/{type}', [ComplaintController::class, 'actionMultipleSelect']);
      Route::post('/complainant/get/{id}', [ComplaintController::class, 'get']);
@@ -225,6 +236,8 @@ Route::middleware(['auth', 'activate', 'user-activity'])->group(function() {
      Route::get('/referral/report', [ReferralController::class, 'create']);
      Route::post('/referral/create', [ReferralController::class, 'store']);
      Route::post('/referral/get/{id}', [ReferralController::class, 'get']);
+     Route::post('/referral/{id}/revoke', [ReferralController::class, 'revokeReferral']);
+     Route::post('/referral/{id}/edit', [ReferralController::class, 'updateReferral']);
 
      Route::post('/absent-form/get/{id}', [AbsentFormController::class, 'get']);
      Route::get('/absent-form/{id}/evidence/{fileName}', [AbsentFormController::class, 'downloadEvidence']);

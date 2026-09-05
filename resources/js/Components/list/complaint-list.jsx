@@ -132,7 +132,8 @@ const ComplaintList = ({
             s === "rejected" ? "bg-red-500" :
             s === "pending" ? "bg-yellow-500" :
             s === "ongoing" ? "bg-orange-500" :
-            s === "resolved" ? "bg-green-500" : "";
+            s === "resolved" ? "bg-green-500" :
+            s === "revoked" ? "bg-gray-500" : "";
           return (
             <span className={`px-2 py-1 text-white rounded-xl ${bg}`}>{toTitleCase(s)}</span>
           );
@@ -199,6 +200,24 @@ const ComplaintList = ({
                     Resolve
                 </ActionBtn>
                 )}
+                {obj.complainant_id === user?.id && obj.complaint_status === "pending" && !obj.edited_at && (
+                <ActionBtn
+                    onClick={() => actionEvent("edit", obj.id)}
+                    className="bg-indigo-600 text-white hover:bg-indigo-700"
+                >
+                    Edit
+                </ActionBtn>
+                )}
+
+                {obj.complainant_id === user?.id && ["pending", "ongoing"].includes(obj.complaint_status) && (
+                <ActionBtn
+                    onClick={() => actionEvent("revoke", obj.id)}
+                    className="bg-gray-600 text-white hover:bg-gray-700"
+                >
+                    Revoke
+                </ActionBtn>
+                )}
+
                 {select && (
                 <input type="checkbox" value={obj.case_number} />
                 )}
@@ -208,7 +227,7 @@ const ComplaintList = ({
     });
 
     return cols;
-  }, [list, type, select, select2]);
+  }, [list, type, select, select2, user]);
 
   if (rows.length === 0) {
     return <CustomNoRowsOverlay />;

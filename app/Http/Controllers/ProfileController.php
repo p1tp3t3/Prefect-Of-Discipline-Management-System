@@ -104,7 +104,7 @@ class ProfileController extends Controller
                         'created_at' => $cs->complaint->created_at,
                         'incident' => $cs->complaint->violation->violation_name ?? null,
                         'resolved_since' => $cs->complaint->resolved_at,
-                        'summary' => $cs->incident_summary,
+                        'summary' => $cs->complaint->incident_summary ?? $cs->incident_summary,
                         'offenses' => $cs->offenses->map(fn ($o) => ['id' => $o->violation_id])->values(),
                     ])->values(),
                 ];

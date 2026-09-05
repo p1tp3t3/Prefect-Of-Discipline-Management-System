@@ -337,7 +337,7 @@ class DashboardController extends Controller
         $isProgramHead = $teachingStaff?->position === 'program_head';
 
         $complaint = Complaint::where('complainant_id', $id)->count();
-        $referral = Referral::where('program_head_id', $id)->count('id');
+        $referral = Referral::where('teaching_staff_id', $id)->count('id');
 
         $studentCount = Enrollment::where('program_id', $programId)->distinct('student_id')->count('student_id');
 

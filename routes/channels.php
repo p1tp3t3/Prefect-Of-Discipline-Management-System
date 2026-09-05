@@ -44,3 +44,6 @@ Broadcast::channel('job-status.progress.user.{user_id}', function () {
 Broadcast::channel('online-users', function ($user) {
     return ['id' => $user->id];
 });
+Broadcast::channel('chat.{user_id}', function () {
+    return true;
+});

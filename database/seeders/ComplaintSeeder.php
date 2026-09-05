@@ -2,11 +2,14 @@
 
 namespace Database\Seeders;
 
+use App\Http\Controllers\Modules\Complaint\ComplaintController;
 use App\Models\Complaint;
 use App\Models\ComplaintSubject;
 use App\Models\ComplaintSubjectViolation;
 use App\Models\User;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\File;
 
 class ComplaintSeeder extends Seeder
 {
@@ -31,7 +34,6 @@ class ComplaintSeeder extends Seeder
                 ComplaintSubject::factory()->create([
                     'complaint_id' => $complaint->id,
                     'student_id' => $studentId,
-                    'incident_summary' => $complaint->complaint_status === 'resolved' ? fake()->sentence(6) : null,
                 ]);
 
                 // A resolved complaint has a formally-determined offense per subject.
@@ -42,6 +44,20 @@ class ComplaintSeeder extends Seeder
                         'violation_id' => $complaint->incident_id,
                     ]);
                 }
+            }
+
+            // One form per complaint, covering every subject together —
+            // only generated once resolved, matching the real app
+            // (ViolationController::multipleViolationStore()).
+            if ($complaint->complaint_status === 'resolved') {
+                $resolved = Complaint::with(['user.profile', 'complaintSubject.user.profile'])->find($complaint->id);
+                $field = (new ComplaintController())->getComplaintDocumentField($resolved, $complaint->incident_summary);
+
+                $folder = storage_path("app/private/complaints/complaint-{$complaint->complaint_number}");
+                File::ensureDirectoryExists($folder);
+
+                Pdf::loadView('pdf.complaint-subject', $field)
+                    ->save("{$folder}/complaint-{$complaint->complaint_number}.pdf");
             }
         }
     }

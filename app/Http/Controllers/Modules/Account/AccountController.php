@@ -370,7 +370,7 @@ class AccountController extends Controller
                 ->orWhereHas('complaintSubject', fn($q) => $q->where('student_id', $userId))
                 ->exists();
 
-            $hasReferral = Referral::where('program_head_id', $userId)
+            $hasReferral = Referral::where('teaching_staff_id', $userId)
                 ->orWhereHas('referralReferredStudent', fn($q) => $q->where('student_id', $userId))
                 ->exists();
 

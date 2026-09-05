@@ -159,7 +159,11 @@ const OffenseListItem = ({ i, data, isLast }) => {
                                 const penaltiesForOcc =
                                     data.penalties
                                         ?.filter((p) => p.occurrence == occ)
-                                        .map((p) => p.penalty?.description ?? p.penalty_description)
+                                        .map((p) => {
+                                            const desc = p.penalty?.description ?? p.penalty_description;
+                                            const ref = p.penalty?.ref_number;
+                                            return ref != null ? `${ref} — ${desc}` : desc;
+                                        })
                                         ?? [];
 
                                 return (

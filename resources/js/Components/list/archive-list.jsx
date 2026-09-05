@@ -64,6 +64,7 @@ const ArchiveItem = ({ data, index, viewDocument, deleteDocument, recoverDocumen
       if(s == 'pending') return 'bg-yellow-500'
       if(s == 'ongoing') return 'bg-orange-500'
       if(s == 'resolved') return 'bg-green-500'
+      if(s == 'revoked') return 'bg-gray-500'
   }
 
   return (
@@ -228,7 +229,7 @@ const ArchiveItem = ({ data, index, viewDocument, deleteDocument, recoverDocumen
           View
         </ActionBtn>
 
-        {data.type === "complaint" && data.complaint_status === "rejected" && (
+        {data.type === "complaint" && (data.complaint_status === "rejected" || data.complaint_status === "revoked") && (
           <ActionBtn
             className="bg-green-600 text-white hover:bg-green-700 w-full sm:w-auto"
             onClick={() => recoverDocument(data.id, data.type, data.usr)}

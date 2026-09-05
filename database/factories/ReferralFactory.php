@@ -22,7 +22,7 @@ class ReferralFactory extends Factory
 {
     public function definition(): array
     {
-        $programHead = User::where('role', 'sub_admin')->inRandomOrder()->first()
+        $referrer = User::where('role', 'sub_admin')->inRandomOrder()->first()
             ?? User::inRandomOrder()->first();
 
         $createdAt = $this->faker->dateTimeBetween('-1 year', 'now');
@@ -35,7 +35,7 @@ class ReferralFactory extends Factory
         $sequence = Referral::where('referral_number', 'like', "{$prefix}%")->count() + 1;
 
         return [
-            'program_head_id' => $programHead?->id,
+            'teaching_staff_id' => $referrer?->id,
             'referral_number' => $prefix . str_pad($sequence, 2, '0', STR_PAD_LEFT),
             'reason_description' => $this->faker->paragraph(2),
             'referral_status' => $status,

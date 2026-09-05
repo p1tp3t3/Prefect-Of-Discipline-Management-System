@@ -11,12 +11,14 @@ class Referral extends Model
 
     public $table = 'referral',
            $fillable = [
-               'program_head_id',
+               'teaching_staff_id',
                'referral_number',
                'reason_description',
                'referral_status',
                'rejected_reason',
                'rejected_at',
+               'revoked_at',
+               'edited_at',
                'send_to_guidance',
                'confirmed_at',
                'archived_at',
@@ -24,7 +26,7 @@ class Referral extends Model
            $timestamps = false;
 
     public function user() {
-        return $this->belongsTo(User::class, 'program_head_id', 'id');
+        return $this->belongsTo(User::class, 'teaching_staff_id', 'id');
     }
     public function referredStudent() {
         return $this->hasOneThrough(

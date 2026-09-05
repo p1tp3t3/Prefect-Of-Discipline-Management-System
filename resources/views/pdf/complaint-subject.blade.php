@@ -56,6 +56,7 @@
     <div class="form-container">
         <div class="form-header" style="text-align: center;">
             <h1>Complaint Report</h1>
+            <p>Reference No. {{ $complaint_number ?? 'N/A' }}</p>
             <p>Case No. {{ $case_number ?? 'N/A' }}</p>
         </div>
 
@@ -72,15 +73,18 @@
         </div>
 
         <div class="form-section">
-            <h2>Subject</h2>
-            <div class="info-group">
-                <span class="info-label">Name:</span>
-                <span class="info-value">{{ $subject_name }}</span>
-            </div>
-            <div class="info-group">
-                <span class="info-label">Type:</span>
-                <span class="info-value">{{ $subject_user_type }}</span>
-            </div>
+            <h2>Subject{{ count($subjects ?? []) > 1 ? 's' : '' }}</h2>
+            @forelse($subjects ?? [] as $subject)
+                <div class="info-group">
+                    <span class="info-label">Name:</span>
+                    <span class="info-value">{{ $subject['name'] }}</span>
+                    <span class="info-value">&nbsp;({{ $subject['user_type'] }})</span>
+                </div>
+            @empty
+                <div class="info-group">
+                    <span class="info-value">N/A</span>
+                </div>
+            @endforelse
         </div>
 
         <div class="form-section">

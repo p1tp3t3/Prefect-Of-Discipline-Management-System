@@ -77,7 +77,9 @@ const ViolationStudents = ({ violation, students, occurrence_breakdown = [] }) =
                                                 {r.penalties.length !== 0 ? (
                                                     r.penalties.map((p, i) => (
                                                         <span key={i} className="px-3 py-1 bg-gray-100 text-gray-700 text-[0.8em] rounded-full">
-                                                            {p.penalty?.description}
+                                                            {p.penalty?.ref_number != null
+                                                                ? `${p.penalty.ref_number} — ${p.penalty.description}`
+                                                                : p.penalty?.description}
                                                         </span>
                                                     ))
                                                 ) : (

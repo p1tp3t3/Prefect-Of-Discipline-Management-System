@@ -20,6 +20,7 @@ const PenaltyList = ({ list = null }) => {
                 <TableHead>
                     <TableRow>
                         <TableCell sx={{ borderBottom: "1px solid #e5e7eb" }}>#</TableCell>
+                        <TableCell sx={{ borderBottom: "1px solid #e5e7eb" }}>Ref No.</TableCell>
                         <TableCell sx={{ borderBottom: "1px solid #e5e7eb" }}>Penalty Name</TableCell>
                     </TableRow>
                 </TableHead>
@@ -30,14 +31,14 @@ const PenaltyList = ({ list = null }) => {
                             penaltyList.map((e, i) => <Row key={i} i={i} data={e} />)
                         ) : (
                             <TableRow>
-                                <TableCell align="center" sx={{ py: 5, fontSize: "0.9em" }} colSpan={2}>
+                                <TableCell align="center" sx={{ py: 5, fontSize: "0.9em" }} colSpan={3}>
                                     No Penalty Yet
                                 </TableCell>
                             </TableRow>
                         )
                     ) : (
                         <TableRow>
-                            <TableCell colSpan={2}>
+                            <TableCell colSpan={3}>
                                 <div className="flex justify-center items-center w-full py-10 text-[0.9em]">
                                     <ListSkeleton rows={3} />
                                 </div>
@@ -54,6 +55,7 @@ const Row = ({ i, data }) => {
     return (
         <TableRow>
             <TableCell sx={{ fontSize: "0.9em" }}>{i + 1}.</TableCell>
+            <TableCell sx={{ fontSize: "0.9em" }}>{data.ref_number}</TableCell>
             <TableCell sx={{ fontSize: "0.9em" }}>{toTitleCase(data.description)}</TableCell>
         </TableRow>
     );

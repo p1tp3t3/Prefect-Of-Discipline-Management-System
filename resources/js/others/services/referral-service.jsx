@@ -13,4 +13,12 @@ export const ReferralService = {
         const api = new APIRequest(`/referral/verify/${id}/${action}`, "post", {}, setter, success, error);
         api.fetchData();
     },
+    revoke(id, setter, success, error) {
+        const api = new APIRequest(`/referral/${id}/revoke`, "post", {}, setter, success, error);
+        api.fetchData();
+    },
+    update(id, formData, setter, success, error) {
+        const api = new APIRequest(`/referral/${id}/edit`, "post", formData, setter, success, error);
+        api.sendPostData();
+    },
 };

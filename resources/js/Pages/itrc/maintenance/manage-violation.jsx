@@ -103,7 +103,9 @@ const ManageViolation = ({ list, events, reload, setter }) => {
                                             {[1, 2, 3, 4, 5, 6].map((occ) => {
                                                 const penaltiesForOcc = row.penalties
                                                     ?.filter((p) => p.occurrence == occ)
-                                                    .map((p) => p.penalty?.description) ?? [];
+                                                    .map((p) => p.penalty?.ref_number != null
+                                                        ? `${p.penalty.ref_number} — ${p.penalty.description}`
+                                                        : p.penalty?.description) ?? [];
 
                                                 if (penaltiesForOcc.length === 0) return null;
 

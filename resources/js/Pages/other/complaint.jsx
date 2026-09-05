@@ -1,9 +1,10 @@
 import AuthLayout from "@/Layouts/auth-layout"
 import { useEffect, useState } from "react"
 import IssueComplaintModal from "@/Components/modal/submission-form/issue-complaint-modal"
+import EditComplaintModal from "@/Components/modal/submission-form/edit-complaint-modal"
 import ComplaintList from "@/Components/list/complaint-list"
 import { useReload } from "@/context-provider/reload-provider"
-import { change } from "@/others/function"
+import { change, showWarningModal } from "@/others/function"
 import ViewComplaintModal from "@/Components/modal/view/view-complaint-modal"
 import { Head, router } from "@inertiajs/react"
 import Btn from "@/Components/button/normal-btn"
@@ -11,7 +12,8 @@ import TabSwitcher from "@/Components/other/tab-switcher"
 import { Button, Paper } from "@mui/material"
 import { DataGrid } from '@mui/x-data-grid';
 import QuickFilteringGrid from "@/Components/text-component"
-import { List, XCircle, PauseCircle, RotateCw } from "lucide-react"
+import { List, XCircle, PauseCircle, RotateCw, Undo2 } from "lucide-react"
+import { ComplaintService } from "@/others/services/complaint-service"
 
 
 const Complaint = (props) => {
@@ -19,6 +21,8 @@ const Complaint = (props) => {
 
     const [issueComplaint, openIssueComplaint] = useState(false),
           [viewComplaint, openViewComplaint] = useState(false),
+          [editComplaint, openEditComplaint] = useState(false),
+          [editData, setEditData] = useState(null),
           [complainant_id, setComplainantId] = useState(''),
 
           [data, setData] = useState({
@@ -40,6 +44,7 @@ const Complaint = (props) => {
       { key: "rejected", label: "Rejected", icon: XCircle },
       { key: "pending", label: "Pending", icon: PauseCircle },
       { key: "ongoing", label: "Ongoing", icon: RotateCw },
+      { key: "revoked", label: "Revoked", icon: Undo2 },
     ];
     const setId = (id) => {
         setComplainantId(id)
@@ -51,18 +56,54 @@ const Complaint = (props) => {
         setChoose(type)
       }
 
-      
+    const handleAction = (type, id) => {
+        if (type === "revoke") {
+            showWarningModal(
+                'Are You Sure You Want To Revoke This Complaint? This will not delete it, but the prefect will still be able to see it.',
+                'Revoke Complaint',
+                'Cancel',
+                () => {
+                    loadRegister(true, "text-wait", "Revoking Complaint Is Processing")
+                    ComplaintService.revoke(
+                        id,
+                        () => {},
+                        () => {
+                            loadRegister(true, "success", "Complaint Revoked Successfully")
+                            router.reload({ only: ['complaint_list'] })
+                        },
+                        () => loadRegister(true, "error", "Failed to Revoke Complaint")
+                    )
+                }
+            )
+        } else if (type === "edit") {
+            ComplaintService.getComplaintInfo(id, (d) => {
+                setEditData(d)
+                openEditComplaint(true)
+            })
+        }
+    }
+
+
 
     return (
         <>
         <Head title="Complaint" />
         <ViewComplaintModal
-            close={viewComplaint} 
-            closeModal={openViewComplaint} 
+            close={viewComplaint}
+            closeModal={openViewComplaint}
             pd={['px-10', 'py-7']}
-            isEnableOuterClose={true} 
+            isEnableOuterClose={true}
             complainant={complainant_id}
             usr={props.user}
+        />
+        <EditComplaintModal
+            close={editComplaint}
+            closeModal={openEditComplaint}
+            isEnableOuterClose={true}
+            data={editData}
+            student_list={props.students}
+            incident_list={props.incident_list}
+            reload={loadRegister}
         />
         {props.user.allow_complaint
         ?
@@ -108,6 +149,7 @@ const Complaint = (props) => {
                             style={true}
                             list={props.complaint_list}
                             setId={setId}
+                            actionEvent={handleAction}
                         />
                     </div>
                 </div>

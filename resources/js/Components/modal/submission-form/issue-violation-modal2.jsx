@@ -16,6 +16,7 @@ import {
 
 const IssueViolationModal2 = (props) => {
   const [subjects, setSubjects] = useState([]);
+  const [summary, setSummary] = useState("");
   const [validationErr, setValidationError] = useState({});
 
   // -------------------------------------------------------
@@ -28,7 +29,6 @@ const IssueViolationModal2 = (props) => {
       list = props.complaint.complaint_subject.map((sub) => ({
         student_id: sub.user.id,
         case_number: props.complaint.case_number,
-        summary: "",
         offenses: [
           {
             violation: "",
@@ -42,7 +42,6 @@ const IssueViolationModal2 = (props) => {
         {
           student_id: props.complaint?.student_id || "",
           case_number: props.complaint?.case_number || "",
-          summary: "",
           offenses: [
             {
               violation: "",
@@ -55,18 +54,9 @@ const IssueViolationModal2 = (props) => {
     }
 
     setSubjects(list);
+    setSummary("");
     setValidationError({});
   }, [props.close]);
-
-  // -------------------------------------------------------
-  // Summary change
-  // -------------------------------------------------------
-  const handleStudentChange = (i, e) => {
-    const { name, value } = e.target;
-    setSubjects((prev) =>
-      prev.map((item, idx) => (idx === i ? { ...item, [name]: value } : item))
-    );
-  };
 
   // -------------------------------------------------------
   // Offense change
@@ -129,15 +119,14 @@ const IssueViolationModal2 = (props) => {
     let errors = {};
     let hasError = false;
 
+    // (1) Summary required — one shared narrative for the whole complaint
+    if (!summary.trim()) {
+      hasError = true;
+      errors.summary = "Summary of the incident is required.";
+    }
+
     subjects.forEach((student, studentIndex) => {
       const offenses = student.offenses;
-
-      // (1) Summary required
-      if (!student.summary.trim()) {
-        hasError = true;
-        errors[`summary_${studentIndex}`] =
-          "Summary is required for this student.";
-      }
 
       // (2) Check if "none" is selected with other violations
       const noneSelected = offenses.some((o) => o.violation === "none");
@@ -191,6 +180,7 @@ const IssueViolationModal2 = (props) => {
       () => {
         const f = new FormData();
         f.append("id", props.complaint.id);
+        f.append("incident_summary", summary);
         f.append("subjects", JSON.stringify(subjects));
 
         props.reload(true, "text-wait", "Resolving Complaint is Processing");
@@ -348,21 +338,21 @@ const IssueViolationModal2 = (props) => {
                   >
                     + Add another offense
                   </button>
-
-                  {/* Summary */}
-                  <FormTextfield
-                    type="textarea"
-                    label="Summary About the Incident"
-                    name="summary"
-                    val={sub.summary}
-                    change={(e) => handleStudentChange(i, e)}
-                    error={validationErr[`summary_${i}`]}
-                    errorAsterisk={!!validationErr[`summary_${i}`]}
-                    className="mt-4"
-                  />
                 </div>
               );
             })}
+
+            {/* Summary — one shared narrative for the whole complaint,
+                not one per complainee */}
+            <FormTextfield
+              type="textarea"
+              label="Summary About the Incident"
+              name="summary"
+              val={summary}
+              change={(e) => setSummary(e.target.value)}
+              error={validationErr.summary}
+              errorAsterisk={!!validationErr.summary}
+            />
 
             <div className="grid justify-end pt-3">
               <FormButton type="submit" label="Submit" />

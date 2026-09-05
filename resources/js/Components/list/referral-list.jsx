@@ -99,10 +99,12 @@ const ReferralList = ({ style, list = null, type, events, viewReferral }) => {
             headerAlign: 'start',
             sortable: false,
             filterable: false,
-            width: usr?.role === "sub_admin" ? 420 : 120,
+            width: usr?.role === "sub_admin" ? 420 : 260,
             renderCell: (params) => {
                 const row = params.row
                 const canModerate = usr?.role === "sub_admin" && !row.confirmed_at
+                const isOwner = row.raw?.teaching_staff_id === usr?.id
+                const isPending = row.raw?.referral_status === "pending" && !row.confirmed_at
 
                 return (
                     <div className="flex items-center gap-2 text-[0.9em]">
@@ -136,6 +138,24 @@ const ReferralList = ({ style, list = null, type, events, viewReferral }) => {
                                     Reject
                                 </ActionBtn>
                             </>
+                        )}
+
+                        {isOwner && isPending && !row.raw?.edited_at && (
+                            <ActionBtn
+                                className="bg-indigo-600 hover:bg-indigo-700"
+                                onClick={() => events("edit", row.id)}
+                            >
+                                Edit
+                            </ActionBtn>
+                        )}
+
+                        {isOwner && isPending && (
+                            <ActionBtn
+                                className="bg-gray-600 hover:bg-gray-700"
+                                onClick={() => events("revoke", row.id)}
+                            >
+                                Revoke
+                            </ActionBtn>
                         )}
                     </div>
                 )

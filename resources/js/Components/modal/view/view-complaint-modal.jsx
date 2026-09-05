@@ -5,7 +5,22 @@ import SelectedUser from "../../other/selected-user"
 import { ComplaintService } from "@/others/services/complaint-service"
 import CircleReload from "@/Components/reload/circle-reload"
 import { Link } from "@inertiajs/react"
-import { AlertCircle } from "lucide-react"
+import {
+    AlertCircle,
+    Hash,
+    CalendarClock,
+    CheckCircle2,
+    ShieldCheck,
+    MessageSquareText,
+    FileWarning,
+    Users,
+    ImageIcon,
+    Sparkles,
+    UserCircle2,
+    ClipboardList,
+    Undo2,
+    FileText,
+} from "lucide-react"
 
 const ViewComplaintModal = (props) => {
     const [data, setData] = useState(null),
@@ -30,272 +45,245 @@ const ViewComplaintModal = (props) => {
             close={props.close}
             closeModal={props.closeModal}
             isEnableOuterClose={props.isEnableOuterClose}
-            pd={props.pd}
+            pd={['p-0', '']}
             bgColor='bg-white'
-            w='w-[55rem] max-w-[90vw]'>  {/* Increased width and made responsive */}
-            <div className="w-full">  {/* Added padding */}
-                <div className="grid gap-4">
-                    {(data != null)
-                    ?
-                    <Body data={data} usr={props.usr} />
-                    :
-                    reload &&
-                    <div className="w-full flex justify-center py-8">
-                        <CircleReload size={3} />
-                    </div>}
-                </div>
+            w='w-[55rem] max-w-[90vw]'>
+            <div className="w-full">
+                {(data != null)
+                ?
+                <Body data={data} usr={props.usr} />
+                :
+                reload &&
+                <div className="w-full flex justify-center py-16">
+                    <CircleReload size={3} />
+                </div>}
             </div>
         </UpModal>
     )
 }
 
+const STATUS_STYLES = {
+    rejected: 'bg-red-50 text-red-700 ring-1 ring-inset ring-red-200',
+    pending: 'bg-yellow-50 text-yellow-700 ring-1 ring-inset ring-yellow-200',
+    ongoing: 'bg-orange-50 text-orange-700 ring-1 ring-inset ring-orange-200',
+    resolved: 'bg-green-50 text-green-700 ring-1 ring-inset ring-green-200',
+    revoked: 'bg-gray-100 text-gray-700 ring-1 ring-inset ring-gray-300',
+}
+
+const MATCH_LEVELS = [
+    { label: 'Very Strong Match', min: 0.70, chip: 'bg-green-100 border-green-400 text-green-700', legend: 'bg-green-100 text-green-700 border-green-400' },
+    { label: 'Strong Match', min: 0.55, chip: 'bg-yellow-100 border-yellow-400 text-yellow-700', legend: 'bg-yellow-100 text-yellow-700 border-yellow-400' },
+    { label: 'Likely Related', min: 0.40, chip: 'bg-orange-100 border-orange-400 text-orange-700', legend: 'bg-orange-100 text-orange-700 border-orange-400' },
+    { label: 'Possibly Related', min: 0.25, chip: 'bg-red-100 border-red-400 text-red-700', legend: 'bg-red-100 text-red-700 border-red-400' },
+    { label: 'Unclear / Needs Review', min: -Infinity, chip: 'bg-gray-200 border-gray-400 text-gray-700', legend: 'bg-gray-200 text-gray-700 border-gray-400' },
+]
+
+const matchLevelFor = (similarity) => MATCH_LEVELS.find(l => similarity >= l.min)
+
+const Section = ({ icon: Icon, title, children, tone = 'border-gray-200' }) => (
+    <div className={`rounded-xl border ${tone} bg-white p-4 sm:p-5`}>
+        <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-800 mb-3">
+            <Icon size={16} className="text-gray-400 shrink-0" />
+            {title}
+        </h2>
+        {children}
+    </div>
+)
+
+const Stat = ({ icon: Icon, label, value }) => (
+    <div className="flex items-start gap-2.5">
+        <div className="mt-0.5 rounded-md bg-gray-100 p-1.5">
+            <Icon size={14} className="text-gray-500" />
+        </div>
+        <div className="min-w-0">
+            <div className="text-[0.7rem] uppercase tracking-wide text-gray-400 font-medium">{label}</div>
+            <div className="text-sm font-medium text-gray-800 truncate">{value}</div>
+        </div>
+    </div>
+)
+
 const Body = ({ data, usr }) => {
     const evidences = data.complaint_evidences ? JSON.parse(data.complaint_evidences) : []
-
-    const status = (s) => {
-        if (s == 'rejected') return 'bg-red-500'
-        if (s == 'pending') return 'bg-yellow-500'
-        if (s == 'ongoing') return 'bg-orange-500'
-        if (s == 'resolved') return 'bg-green-500'
-        return 'bg-gray-500'  // Default
-    }
+    const contextAnalysis = data.context_analysis ? JSON.parse(data.context_analysis) : []
+    const complainantName = toTitleCase(data.user != null ? data.user.profile?.first_name : data.complainant_name)
 
     return (
-        <div className="space-y-6">
-            <div className="text-center">
-                <h1 className="text-2xl font-bold">{toTitleCase((data.user != null ? data.user.profile?.first_name : data.complainant_name))}'s Complaint</h1>
+        <div>
+            {/* Header banner */}
+            <div className="rounded-t-md bg-gray-50 border-b px-6 py-5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <h1 className="text-xl font-bold text-gray-900">{complainantName}'s Complaint</h1>
+                        <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-1">
+                            <Hash size={12} />
+                            {data.complaint_number}
+                        </div>
+                    </div>
+                    <span className={`inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full ${STATUS_STYLES[data.complaint_status] ?? 'bg-gray-100 text-gray-700 ring-1 ring-inset ring-gray-200'}`}>
+                        {toTitleCase(data.complaint_status)}
+                    </span>
+                </div>
             </div>
-            <div className="grid gap-6">
-                <div className="grid gap-3">
-                    <div>
-                        <h2 className="text-lg font-semibold">Reference No.</h2>
-                        <p className="text-sm">{data.complaint_number}</p>
-                    </div>
-                    <div>
-                        <h2 className="text-lg font-semibold">Status</h2>
-                        <span className={`inline-block px-3 py-1 text-white text-sm rounded-full ${status(data.complaint_status)}`}>
-                            {toTitleCase(data.complaint_status)}
-                        </span>
-                    </div>
-                    <div>
-                        <h2 className="text-lg font-semibold">Reported Since</h2>
-                        <p className="text-sm">{readableDate(data.created_at)} ({readableTime(data.created_at)})</p>
-                    </div>
+
+            <div className="p-6 space-y-4">
+                {/* Timeline stats */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 rounded-xl border border-gray-200 bg-white p-4 sm:p-5">
+                    <Stat icon={CalendarClock} label="Reported Since" value={`${readableDate(data.created_at)} (${readableTime(data.created_at)})`} />
                     {data.confirmed_at &&
-                    <div>
-                        <h2 className="text-lg font-semibold">Approved Since</h2>
-                        <p className="text-sm">{readableDate(data.confirmed_at)} ({readableTime(data.confirmed_at)})</p>
-                    </div>}
+                    <Stat icon={CheckCircle2} label="Approved Since" value={`${readableDate(data.confirmed_at)} (${readableTime(data.confirmed_at)})`} />}
                     {data.offense_issued_at &&
-                    <div>
-                        <h2 className="text-lg font-semibold">Resolved Since</h2>
-                        <p className="text-sm">{readableDate(data.offense_issued_at)} ({readableTime(data.offense_issued_at)})</p>
-                    </div>}
-                    {data.rejected_reason != null &&
-                    <div className="text-sm">
-                        <h2 className="text-lg font-semibold">Reason</h2>
-                        <div className="text-sm h-40 overflow-y-auto border rounded p-2 bg-gray-50">
-                            {data.rejected_reason}
-                        </div>
-                    </div>}
+                    <Stat icon={ShieldCheck} label="Resolved Since" value={`${readableDate(data.offense_issued_at)} (${readableTime(data.offense_issued_at)})`} />}
+                    {data.revoked_at &&
+                    <Stat icon={Undo2} label="Revoked Since" value={`${readableDate(data.revoked_at)} (${readableTime(data.revoked_at)})`} />}
                 </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                    {data.user != null
-                    ?
-                    <ProfileSection
-                        title='Complainant'
-                        data={data.user} />
-                    :
-                    <div className="text-[0.9em]">
-                        <h3 className="text-lg font-semibold">Complainant</h3>
-                        <div>
-                            {toTitleCase(data.complainant_name)}
-                        </div>
-                    </div>}
-                    <ProfileSection
-                        title='Subject'
-                        data={data.subject}
-                        data_list={data.complaint_subject != null ? data.complaint_subject : null} />
-                </div>
-                <div>
-                    <h2 className="text-lg font-semibold mb-2">Incident Reported</h2>
-                    <p className="text-sm">{toTitleCase(data.violation?.violation_name)}</p>
-                </div>
-                <div>
-                    <h2 className="text-lg font-semibold mb-2">Reason by the Complainant</h2>
-                    <div className="text-sm h-40 overflow-y-auto border rounded p-2 bg-gray-50">
-                        <p>{data.complaint_description}</p>
+
+                {data.rejected_reason != null &&
+                <Section icon={FileWarning} title="Reason for Rejection" tone="border-red-200">
+                    <div className="text-sm h-32 overflow-y-auto rounded-md bg-red-50/60 p-3 text-red-800">
+                        {data.rejected_reason}
                     </div>
+                </Section>}
+
+                {data.complaint_status === 'revoked' &&
+                <Section icon={Undo2} title="Revoked by Complainant" tone="border-gray-200">
+                    <p className="text-sm text-gray-600">
+                        The complainant withdrew this complaint. It is kept on record and remains visible here, but is no longer active.
+                    </p>
+                </Section>}
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                    <Section icon={UserCircle2} title="Complainant">
+                        {data.user != null
+                        ? <ProfileBody data={data.user} />
+                        : <div className="text-sm text-gray-700">{toTitleCase(data.complainant_name)}</div>}
+                    </Section>
+                    <Section icon={Users} title="Subject">
+                        <ProfileBody
+                            data={data.subject}
+                            data_list={data.complaintSubject != null ? data.complaintSubject : null} />
+                    </Section>
                 </div>
-                {usr.role === "sub_admin" && (
-                    <div className="mt-6 w-full">
-                        <h2 className="text-lg font-semibold mb-3">
-                            Context of the Complainant's Reason
-                        </h2>
-                        <div className="grid gap-3 w-full">
-                            <div className="flex-wrap flex gap-2 text-[0.8em] text-center font-bold w-full whitespace-nowrap">
-                                <div className="bg-green-100 text-green-700  border-green-400 border-[1.9px] px-3 py-1 rounded-full">Very Strong Match</div>
-                                <div className="bg-yellow-100 text-yellow-700  border-yellow-400 border-[1.9px] px-3 py-1 rounded-full">Strong Match</div>
-                                <div className="bg-orange-100 text-orange-700  border-orange-400 border-[1.9px] px-3 py-1 rounded-full">Likely Related</div>
-                                <div className="bg-red-100 text-red-700  border-red-400 border-[1.9px] px-3 py-1 rounded-full">Possibly Related</div>
-                                <div className="bg-gray-200 text-gray-700  border-gray-400 border-[1.9px] px-3 py-1 rounded-full">Unclear / Needs Review</div>
-                            </div>
-                            {JSON.parse(data.context_analysis).length !== 0 ? (
-                                <div className="flex flex-wrap gap-2 p-3 border rounded-md">
-                                    {JSON.parse(data.context_analysis).map((e, i) => {
 
-                                        const status = () => {
-                                            if (e.similarity >= 0.70) return "bg-green-100 border-green-400 text-green-700";       // Very Strong Match
-                                            if (e.similarity >= 0.55) return "bg-yellow-100 border-yellow-400 text-yellow-700";    // Strong Match
-                                            if (e.similarity >= 0.40) return "bg-orange-100 border-orange-400 text-orange-700";    // Likely Related
-                                            if (e.similarity >= 0.25) return "bg-red-100 border-red-400 text-red-700";          // Possibly Related
-                                            return "bg-gray-200 border-gray-400 text-gray-700";                                 // Not Related
-                                        };
-                                        
+                <Section icon={ClipboardList} title="Incident Reported">
+                    <p className="text-sm text-gray-700">{toTitleCase(data.violation?.violation_name)}</p>
+                </Section>
 
-                                        return (
-                                            <div
-                                                key={i}
-                                                className={`flex items-center justify-between gap-3 ${status()} rounded-xl px-3 py-1 border-[1.9px]`}
-                                            >
-                                                <p className="text-[0.8em] font-medium">
-                                                    {e.violation}
-                                                </p>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            ) : (
-                                <div className="flex flex-col items-center justify-center py-12 text-gray-500">
-                                    <AlertCircle size="2.25rem" className="mb-2" />
-                                    <p className="text-sm font-medium">No Context Analyzed</p>
-                                </div>
-                            )}
-
-                        </div>
+                <Section icon={MessageSquareText} title="Reason by the Complainant">
+                    <div className="text-sm h-32 overflow-y-auto rounded-md bg-gray-50 p-3 text-gray-700 leading-relaxed">
+                        {data.complaint_description}
                     </div>
-                    )}
-                <div>
-                    <h2 className="text-lg font-semibold mb-2">Additional Evidences</h2>
+                </Section>
+
+                {usr.role === "sub_admin" &&
+                <Section icon={Sparkles} title="Context of the Complainant's Reason">
+                    <div className="flex flex-wrap gap-1.5 mb-3">
+                        {MATCH_LEVELS.map((l, i) => (
+                            <span key={i} className={`text-[0.7rem] font-semibold px-2.5 py-0.5 rounded-full border ${l.legend}`}>
+                                {l.label}
+                            </span>
+                        ))}
+                    </div>
+                    {contextAnalysis.length !== 0
+                    ? <div className="flex flex-wrap gap-2 p-3 rounded-md bg-gray-50">
+                        {contextAnalysis.map((e, i) => {
+                            const level = matchLevelFor(e.similarity)
+                            return (
+                                <span key={i} className={`inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1 rounded-full border ${level.chip}`}>
+                                    {e.violation}
+                                </span>
+                            )
+                        })}
+                      </div>
+                    : <div className="flex flex-col items-center justify-center py-10 text-gray-400">
+                        <AlertCircle size={28} className="mb-2" />
+                        <p className="text-sm font-medium">No Context Analyzed</p>
+                      </div>}
+                </Section>}
+
+                <Section icon={ImageIcon} title={`Additional Evidences${evidences.length ? ` (${evidences.length})` : ''}`}>
                     {evidences.length !== 0
                     ? <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                         {evidences.map((e, i) => {
                             const src = `/complaint/${data.id}/evidence/${e.file}`
                             return (
-                                <a key={i} href={src} target="_blank" rel="noreferrer" className="block border rounded overflow-hidden">
+                                <a key={i} href={src} target="_blank" rel="noreferrer"
+                                   className="group block rounded-lg overflow-hidden border border-gray-200 hover:border-gray-300 hover:shadow-sm transition">
                                     {e.type === 'vid'
                                     ? <video src={src} className="w-full h-32 object-cover" controls />
-                                    : <img src={src} className="w-full h-32 object-cover" alt={`Evidence ${i + 1}`} />}
+                                    : <img src={src} className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-200" alt={`Evidence ${i + 1}`} />}
                                 </a>
                             )
                         })}
                       </div>
-                    : <div className="text-center py-8 text-gray-500">
-                        <AlertCircle size="2.25rem" className="mb-2" />
-                        <div>No Evidences Included</div>
+                    : <div className="flex flex-col items-center justify-center py-10 text-gray-400">
+                        <AlertCircle size={28} className="mb-2" />
+                        <div className="text-sm font-medium">No Evidences Included</div>
                       </div>}
-                </div>
+                </Section>
+
+                {data.complaint_status === "resolved" && (() => {
+                    const summary = data.incident_summary || data.complaintSubject?.find(s => s.incident_summary)?.incident_summary
+                    return summary &&
+                        <Section icon={FileText} title="Summary About the Incident">
+                            <div className="rounded-md bg-gray-50 h-32 overflow-y-auto p-3 text-sm text-gray-800 leading-relaxed">
+                                {summary}
+                            </div>
+                        </Section>
+                })()}
 
                 {data.complaint_status === "resolved" &&
-                data.complaint_subject?.map((sub, i) => {
-
-                    // Filter offenses belonging only to THIS student
-                    const offenses = (data.complaint_subject_violation || []).filter(
+                data.complaintSubject?.map((sub, i) => {
+                    const offenses = (data.complaintSubjectViolation || []).filter(
                         off => off.student_id === sub.student_id
-                    );
+                    )
 
                     return (
-                        <div key={i} className="mt-5 rounded-lg border shadow-sm bg-white">
-
-                            {/* Header */}
-                            <div className="px-4 py-3 border-b bg-gray-100 rounded-t-lg">
-                                <h2 className="text-[1.05rem] font-bold text-gray-800">
+                        <div key={i} className="rounded-xl border border-gray-200 overflow-hidden">
+                            <div className="px-4 sm:px-5 py-3 bg-gray-50 border-b border-gray-200">
+                                <h2 className="text-sm font-bold text-gray-800">
                                     {sub.user?.profile?.first_name} {sub.user?.profile?.middle_name} {sub.user?.profile?.last_name}
                                 </h2>
                             </div>
 
-                            <div className="p-4 space-y-4">
-                                
-                                {/* Offense Section */}
+                            <div className="p-4 sm:p-5 space-y-4">
                                 <div>
-                                    <h3 className="text-sm font-semibold text-gray-700 mb-1">
+                                    <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">
                                         Offenses
                                     </h3>
 
-                                    {offenses.length > 0 ? (
-                                        <div className="flex flex-wrap gap-2">
-                                            {offenses.map((off, idx) => {
-                                                const hasViolation = !!off.violation;
+                                    {offenses.length > 0
+                                    ? <div className="flex flex-wrap gap-2">
+                                        {offenses.map((off, idx) => {
+                                            const hasViolation = !!off.violation
+                                            const label = hasViolation ? off.violation.violation_name : "No Violation Committed"
+                                            const type = hasViolation ? (off.violation.offense_status ? "major" : "minor") : "none"
+                                            const badgeColor = type === "major" ? "bg-red-600" : type === "minor" ? "bg-orange-500" : "bg-gray-500"
 
-                                                const label = hasViolation
-                                                    ? off.violation.violation_name
-                                                    : "No Violation Committed";
-
-                                                const type = hasViolation
-                                                    ? (off.violation.offense_status ? "major" : "minor")
-                                                    : "none";
-
-                                                const badgeColor =
-                                                    type === "major"
-                                                        ? "bg-red-600"
-                                                        : type === "minor"
-                                                            ? "bg-orange-500"
-                                                            : "bg-gray-500";
-
-                                                return (
-                                                    <span
-                                                        key={idx}
-                                                        className={`inline-block text-white text-xs px-3 py-1 rounded-full ${badgeColor}`}
-                                                    >
-                                                        {label}
-                                                        {type !== "none" && (
-                                                            <span className="ml-1 opacity-80">
-                                                                ({type})
-                                                            </span>
-                                                        )}
-                                                    </span>
-                                                );
-                                            })}
-                                        </div>
-                                    ) : (
-                                        <span className="text-xs text-gray-500">
-                                            No Offense Records Found
-                                        </span>
-                                    )}
+                                            return (
+                                                <span key={idx} className={`inline-block text-white text-xs font-medium px-3 py-1 rounded-full ${badgeColor}`}>
+                                                    {label}
+                                                    {type !== "none" && <span className="ml-1 opacity-80">({type})</span>}
+                                                </span>
+                                            )
+                                        })}
+                                      </div>
+                                    : <span className="text-xs text-gray-500">No Offense Records Found</span>}
                                 </div>
-
-                                {/* Summary */}
-                                {sub.incident_summary && (
-                                    <div>
-                                        <h3 className="text-sm font-semibold text-gray-700 mb-1">
-                                            Summary About The Incident
-                                        </h3>
-
-                                        <div className="border rounded-md bg-gray-50 h-36 overflow-y-auto p-3 text-sm text-gray-800 leading-relaxed">
-                                            {sub.incident_summary}
-                                        </div>
-                                    </div>
-                                )}
                             </div>
                         </div>
-                    );
+                    )
                 })}
             </div>
         </div>
     )
 }
 
-const ProfileSection = ({ title, data, data_list = null }) => {
-    return (
-        <div>
-            <h3 className="text-lg font-semibold">{title}</h3>
-            {data_list != null
-            ?
-            data_list.length != 0
-            ?
+const ProfileBody = ({ data, data_list = null }) => {
+    if (data_list != null && data_list.length !== 0) {
+        return (
             <div className="grid gap-1">
                 {data_list.map((e, i) =>
-                <Link href={`/profile/${e.user.username}`} className="block">
+                <Link key={i} href={`/profile/${e.user.username}`} className="block">
                     <SelectedUser
                         src={getProfilePic(e.user.profile?.profile_picture, e.user.profile?.sex)}
                         name={[e.user.profile?.first_name, e.user.profile?.last_name]}
@@ -303,23 +291,17 @@ const ProfileSection = ({ title, data, data_list = null }) => {
                     />
                 </Link>)}
             </div>
-            :
-            <Link href={`/profile/${data.username}`} className="block">
-                <SelectedUser
-                    src={getProfilePic(data.profile?.profile_picture, data.profile?.sex)}
-                    name={[data.profile?.first_name, data.profile?.last_name]}
-                    user={data}
-                />
-            </Link>
-            :
-            <Link href={`/profile/${data.username}`} className="block">
-                <SelectedUser
-                    src={getProfilePic(data.profile?.profile_picture, data.profile?.sex)}
-                    name={[data.profile?.first_name, data.profile?.last_name]}
-                    user={data}
-                />
-            </Link>}
-        </div>
+        )
+    }
+
+    return (
+        <Link href={`/profile/${data.username}`} className="block">
+            <SelectedUser
+                src={getProfilePic(data.profile?.profile_picture, data.profile?.sex)}
+                name={[data.profile?.first_name, data.profile?.last_name]}
+                user={data}
+            />
+        </Link>
     )
 }
 

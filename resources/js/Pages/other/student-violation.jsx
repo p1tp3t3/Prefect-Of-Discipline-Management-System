@@ -272,9 +272,9 @@ const BehaviourAnalysis = ({ studentId, violation_list }) => {
                         </div>
                       </div>
 
-                      {v.complaint.complaint_subject[0].incident_summary && (
+                      {(v.complaint.incident_summary || v.complaint.complaint_subject?.[0]?.incident_summary) && (
                         <div className="text-sm text-slate-500">
-                          {v.complaint.complaint_subject[0].incident_summary}
+                          {v.complaint.incident_summary || v.complaint.complaint_subject[0].incident_summary}
                         </div>
                       )}
                     </div>

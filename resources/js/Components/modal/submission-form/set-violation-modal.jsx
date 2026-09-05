@@ -238,7 +238,7 @@ const SetViolationModal = (props) => {
                                                     <option value="">(Optional) Select Penalty</option>
                                                     {props.penalty.map(opt => (
                                                         <option key={opt.id} value={opt.id}>
-                                                            {toTitleCase(opt.description)}
+                                                            {opt.ref_number != null ? `${opt.ref_number} — ${toTitleCase(opt.description)}` : toTitleCase(opt.description)}
                                                         </option>
                                                     ))}
                                                 </select>

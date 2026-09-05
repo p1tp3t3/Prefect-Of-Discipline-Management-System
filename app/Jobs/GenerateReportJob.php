@@ -397,7 +397,7 @@ class GenerateReportJob implements ShouldQueue
                         : ($complaint->complainant_name ?: 'Anonymous'),
                     'date_time' => Carbon::parse($date)->format('F j, Y g:i A'),
                     'resolved_at' => $complaint->resolved_at ? Carbon::parse($complaint->resolved_at)->format('F j, Y g:i A') : '-',
-                    'summary' => $cs->incident_summary ?? '',
+                    'summary' => $complaint->incident_summary ?? $cs->incident_summary ?? '',
                     'violations' => $violationsByComplaint->get($cs->complaint_id, collect())->map(fn ($v) => [
                         'violation_name' => $v->violation?->violation_name,
                         'occurrence' => $v->occurrence,
